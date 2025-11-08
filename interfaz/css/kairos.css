@@ -1,0 +1,471 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #2ecc71;
+    --secondary: #3498db;
+    --danger: #e74c3c;
+    --dark: #2c3e50;
+    --light: #ecf0f1;
+    --success: #27ae60;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#app {
+    width: 100%;
+    max-width: 1200px;
+    height: 100vh;
+    position: relative;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* PANTALLAS */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.pantalla {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    padding: 40px;
+    display: none;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.3s ease;
+}
+
+.pantalla.activa {
+    display: flex;
+    flex-direction: column;
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* PANTALLA ESPERA */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+#pantalla-espera {
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-align: center;
+}
+
+.logo-container {
+    margin-bottom: 60px;
+}
+
+.logo-pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.logo {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.subtitulo {
+    font-size: 32px;
+    opacity: 0.9;
+}
+
+.mensaje-bienvenida h2 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.mensaje-bienvenida p {
+    font-size: 36px;
+    opacity: 0.9;
+}
+
+.btn-grande {
+    padding: 30px 60px;
+    font-size: 32px;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    margin-top: 40px;
+}
+
+.btn-empezar {
+    background: var(--success);
+    color: white;
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.btn-empezar:hover {
+    background: #229954;
+    transform: scale(1.05);
+}
+
+.contador-consultas {
+    position: absolute;
+    bottom: 40px;
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* PANTALLA DATOS */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.header h2 {
+    font-size: 42px;
+    color: var(--dark);
+}
+
+.formulario {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.campo {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.campo label {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.campo input {
+    width: 100%;
+    padding: 20px;
+    font-size: 24px;
+    border: 3px solid var(--light);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.campo input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.btn-voz {
+    position: absolute;
+    right: 10px;
+    top: 50px;
+    padding: 15px 20px;
+    font-size: 24px;
+    border: none;
+    background: var(--secondary);
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.validacion {
+    min-height: 30px;
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+.validacion.error {
+    color: var(--danger);
+}
+
+.validacion.exito {
+    color: var(--success);
+}
+
+.btn-continuar {
+    width: 100%;
+    background: var(--primary);
+    color: white;
+}
+
+.btn-continuar:hover {
+    background: #27ae60;
+}
+
+.btn-continuar:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* CHAT */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.header-chat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    margin: -40px -40px 20px -40px;
+}
+
+.info-paciente {
+    font-size: 20px;
+}
+
+.btn-terminar {
+    padding: 10px 20px;
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.mensaje {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.mensaje.usuario {
+    justify-content: flex-end;
+}
+
+.mensaje-bubble {
+    max-width: 70%;
+    padding: 15px 20px;
+    border-radius: 20px;
+    font-size: 20px;
+    line-height: 1.4;
+}
+
+.mensaje.kairos .mensaje-bubble {
+    background: var(--primary);
+    color: white;
+    border-bottom-left-radius: 5px;
+}
+
+.mensaje.usuario .mensaje-bubble {
+    background: var(--secondary);
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+
+.input-container {
+    display: flex;
+    gap: 10px;
+}
+
+#mensaje-input {
+    flex: 1;
+    padding: 15px 20px;
+    font-size: 20px;
+    border: 3px solid var(--light);
+    border-radius: 10px;
+}
+
+.btn-voz-chat, .btn-enviar {
+    padding: 15px 25px;
+    font-size: 24px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    color: white;
+}
+
+.btn-voz-chat {
+    background: var(--secondary);
+}
+
+.btn-enviar {
+    background: var(--primary);
+}
+
+.indicador-escribiendo {
+    text-align: center;
+    padding: 10px;
+    color: #7f8c8d;
+}
+
+.dots span {
+    animation: blink 1.4s infinite;
+}
+
+.dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes blink {
+    0%, 20% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* GENERANDO / IMPRIMIENDO */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.loading-container, .impresion-container, .despedida-container, .error-container {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.spinner {
+    width: 80px;
+    height: 80px;
+    border: 8px solid var(--light);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 30px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.progreso {
+    margin: 40px 0;
+    text-align: left;
+}
+
+.paso {
+    font-size: 24px;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    background: var(--light);
+}
+
+.paso.activo {
+    background: var(--success);
+    color: white;
+}
+
+.printer-animation {
+    font-size: 120px;
+    animation: bounce 1s infinite;
+}
+
+.progreso-barra {
+    width: 80%;
+    height: 30px;
+    background: var(--light);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 30px 0;
+}
+
+.barra {
+    height: 100%;
+    background: var(--success);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* DESPEDIDA */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+.icono-exito {
+    font-size: 120px;
+    margin-bottom: 20px;
+    animation: scale-in 0.5s ease;
+}
+
+@keyframes scale-in {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
+
+.resumen {
+    margin: 40px 0;
+    text-align: left;
+}
+
+.resumen ul {
+    list-style: none;
+    font-size: 22px;
+}
+
+.resumen li {
+    padding: 10px 0;
+}
+
+.contador-regreso {
+    margin-top: 40px;
+    font-size: 20px;
+    color: #7f8c8d;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* RESPONSIVE */
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+@media (max-width: 768px) {
+    .pantalla {
+        padding: 20px;
+    }
+    
+    .logo {
+        font-size: 60px;
+    }
+    
+    .mensaje-bienvenida h2 {
+        font-size: 32px;
+    }
+    
+    .btn-grande {
+        font-size: 24px;
+        padding: 20px 40px;
+    }
+}

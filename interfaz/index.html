@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kairos - Asistente Médico</title>
+    <link rel="stylesheet" href="css/kairos.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Pantalla de Espera -->
+        <div id="pantalla-espera" class="pantalla activa">
+            <div class="logo-container">
+                <div class="logo-pulse">
+                    <h1 class="logo">🤖 KAIROS</h1>
+                </div>
+                <p class="subtitulo">Asistente Médico Natural</p>
+            </div>
+            
+            <div class="mensaje-bienvenida">
+                <h2>¿Tienes alguna molestia?</h2>
+                <p>¡Puedo ayudarte GRATIS!</p>
+            </div>
+            
+            <button class="btn-grande btn-empezar" onclick="iniciarConsulta()">
+                👆 TOCAR PARA EMPEZAR
+            </button>
+            
+            <div class="contador-consultas">
+                <p>Consultas hoy: <span id="contador-hoy">0</span></p>
+            </div>
+        </div>
+
+        <!-- Captura de Datos -->
+        <div id="pantalla-datos" class="pantalla">
+            <div class="header">
+                <h2>📋 Datos del Paciente</h2>
+            </div>
+            
+            <div class="formulario">
+                <div class="campo">
+                    <label>👤 Nombre Completo</label>
+                    <input type="text" id="nombre" placeholder="Ej: María López García">
+                    <button class="btn-voz" onclick="dictarNombre()">🎤</button>
+                </div>
+                
+                <div class="campo">
+                    <label>🆔 DNI (8 dígitos)</label>
+                    <input type="text" id="dni" maxlength="8" placeholder="12345678">
+                </div>
+                
+                <div class="campo">
+                    <label>📅 Edad (opcional)</label>
+                    <input type="number" id="edad" min="0" max="120" placeholder="32">
+                </div>
+                
+                <div class="validacion" id="validacion"></div>
+                
+                <button class="btn-grande btn-continuar" onclick="capturarDatos()">
+                    CONTINUAR ➡️
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Conversacional -->
+        <div id="pantalla-chat" class="pantalla">
+            <div class="header-chat">
+                <div class="info-paciente">
+                    <span id="nombre-paciente"></span>
+                    <span id="dni-paciente"></span>
+                </div>
+                <button class="btn-terminar" onclick="confirmarTerminar()">❌ Terminar</button>
+            </div>
+            
+            <div class="chat-container" id="chat-mensajes">
+                <!-- Mensajes aquí -->
+            </div>
+            
+            <div class="input-container">
+                <input type="text" id="mensaje-input" placeholder="Escribe tu respuesta..." 
+                       onkeypress="if(event.key==='Enter') enviarMensaje()">
+                <button class="btn-voz-chat" onclick="toggleVoz()">🎤</button>
+                <button class="btn-enviar" onclick="enviarMensaje()">📤</button>
+            </div>
+            
+            <div class="indicador-escribiendo" id="escribiendo" style="display: none;">
+                <span class="dots">Kairos está escribiendo<span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
+
+        <!-- Generando Receta -->
+        <div id="pantalla-generando" class="pantalla">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <h2>🧠 Analizando tu caso...</h2>
+                <div class="progreso">
+                    <div class="paso activo">✅ Diagnóstico completado</div>
+                    <div class="paso" id="paso-productos">🔄 Seleccionando productos...</div>
+                    <div class="paso" id="paso-receta">⏳ Generando receta...</div>
+                    <div class="paso" id="paso-impresion">⏳ Preparando impresión...</div>
+                </div>
+                <p class="mensaje-espera">Por favor espera un momento</p>
+            </div>
+        </div>
+
+        <!-- Imprimiendo -->
+        <div id="pantalla-imprimiendo" class="pantalla">
+            <div class="impresion-container">
+                <div class="printer-animation">🖨️</div>
+                <h2>Imprimiendo tu receta...</h2>
+                <div class="progreso-barra">
+                    <div class="barra" id="barra-impresion"></div>
+                </div>
+                <p class="mensaje-recoge">¡Recoge tu ticket abajo! ⬇️</p>
+            </div>
+        </div>
+
+        <!-- Despedida -->
+        <div id="pantalla-despedida" class="pantalla">
+            <div class="despedida-container">
+                <div class="icono-exito">✅</div>
+                <h2>¡Gracias <span id="nombre-despedida"></span>!</h2>
+                
+                <div class="resumen">
+                    <h3>Tu receta incluye:</h3>
+                    <ul>
+                        <li>✅ Diagnóstico completo</li>
+                        <li>✅ Productos recomendados</li>
+                        <li>✅ Instrucciones de uso</li>
+                        <li>✅ Consejos de alimentación</li>
+                    </ul>
+                </div>
+                
+                <div class="mensaje-final">
+                    <p>¡Que te mejores pronto! 💚</p>
+                </div>
+                
+                <div class="contador-regreso">
+                    Volviendo al inicio en <span id="contador">5</span> segundos...
+                </div>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="pantalla-error" class="pantalla">
+            <div class="error-container">
+                <div class="icono-error">⚠️</div>
+                <h2>Ups, algo salió mal</h2>
+                <p id="mensaje-error"></p>
+                <button class="btn-grande" onclick="volverInicio()">Volver al inicio</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/voice.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
