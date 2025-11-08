@@ -1,3 +1,5 @@
+pip install unidecode --break-system-packages
+
 # para el servidor ubunto es 
 start_api.sh
 

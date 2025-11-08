@@ -1,153 +1,316 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kairos - Asistente Médico</title>
+    <title>KAIROS - Asistente Médico IA</title>
     <link rel="stylesheet" href="css/kairos.css">
 </head>
+
 <body>
+    <!-- Cielo estrellado animado -->
+    <div class="stars-container">
+        <div class="stars"></div>
+        <div class="stars2"></div>
+        <div class="stars3"></div>
+    </div>
+
     <div id="app">
-        <!-- Pantalla de Espera -->
-        <div id="pantalla-espera" class="pantalla activa">
-            <div class="logo-container">
-                <div class="logo-pulse">
-                    <h1 class="logo">🤖 KAIROS</h1>
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA ESPERA -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-espera" class="screen active">
+            <div class="glass-card main-card">
+                <!-- Avatar minimalista -->
+                <div class="avatar-container">
+                    <div class="avatar-container">
+                        <div class="avatar-circle">
+                            <img src="../img/kairos.png" alt="Kairos" class="avatar-image">
+                        </div>
+                        <div class="pulse-ring"></div>
+                    </div>
+                    <div class="pulse-ring"></div>
                 </div>
-                <p class="subtitulo">Asistente Médico Natural</p>
-            </div>
-            
-            <div class="mensaje-bienvenida">
-                <h2>¿Tienes alguna molestia?</h2>
-                <p>¡Puedo ayudarte GRATIS!</p>
-            </div>
-            
-            <button class="btn-grande btn-empezar" onclick="iniciarConsulta()">
-                👆 TOCAR PARA EMPEZAR
-            </button>
-            
-            <div class="contador-consultas">
-                <p>Consultas hoy: <span id="contador-hoy">0</span></p>
-            </div>
-        </div>
 
-        <!-- Captura de Datos -->
-        <div id="pantalla-datos" class="pantalla">
-            <div class="header">
-                <h2>📋 Datos del Paciente</h2>
-            </div>
-            
-            <div class="formulario">
-                <div class="campo">
-                    <label>👤 Nombre Completo</label>
-                    <input type="text" id="nombre" placeholder="Ej: María López García">
-                    <button class="btn-voz" onclick="dictarNombre()">🎤</button>
-                </div>
-                
-                <div class="campo">
-                    <label>🆔 DNI (8 dígitos)</label>
-                    <input type="text" id="dni" maxlength="8" placeholder="12345678">
-                </div>
-                
-                <div class="campo">
-                    <label>📅 Edad (opcional)</label>
-                    <input type="number" id="edad" min="0" max="120" placeholder="32">
-                </div>
-                
-                <div class="validacion" id="validacion"></div>
-                
-                <button class="btn-grande btn-continuar" onclick="capturarDatos()">
-                    CONTINUAR ➡️
+                <!-- Título -->
+                <h1 class="main-title">KAIROS</h1>
+                <p class="subtitle">Asistente Médico Inteligente</p>
+
+                <!-- Badge IA -->
+                <div class="ai-badge">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                    </svg>
+                    <span>Inteligencia Artificial</span>
+                </div><br>
+
+                <!-- Botón principal -->
+                <button class="btn-primary" onclick="iniciarConsulta()">
+                    <span>Iniciar Consulta</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
                 </button>
-            </div>
-        </div>
 
-        <!-- Chat Conversacional -->
-        <div id="pantalla-chat" class="pantalla">
-            <div class="header-chat">
-                <div class="info-paciente">
-                    <span id="nombre-paciente"></span>
-                    <span id="dni-paciente"></span>
+                <!-- Stats minimalistas -->
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="contador-hoy">0</span>
+                        <span class="stat-label">Consultas hoy</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-value status">●</span>
+                        <span class="stat-label">Sistema Online</span>
+                    </div>
                 </div>
-                <button class="btn-terminar" onclick="confirmarTerminar()">❌ Terminar</button>
-            </div>
-            
-            <div class="chat-container" id="chat-mensajes">
-                <!-- Mensajes aquí -->
-            </div>
-            
-            <div class="input-container">
-                <input type="text" id="mensaje-input" placeholder="Escribe tu respuesta..." 
-                       onkeypress="if(event.key==='Enter') enviarMensaje()">
-                <button class="btn-voz-chat" onclick="toggleVoz()">🎤</button>
-                <button class="btn-enviar" onclick="enviarMensaje()">📤</button>
-            </div>
-            
-            <div class="indicador-escribiendo" id="escribiendo" style="display: none;">
-                <span class="dots">Kairos está escribiendo<span>.</span><span>.</span><span>.</span></span>
             </div>
         </div>
 
-        <!-- Generando Receta -->
-        <div id="pantalla-generando" class="pantalla">
-            <div class="loading-container">
-                <div class="spinner"></div>
-                <h2>🧠 Analizando tu caso...</h2>
-                <div class="progreso">
-                    <div class="paso activo">✅ Diagnóstico completado</div>
-                    <div class="paso" id="paso-productos">🔄 Seleccionando productos...</div>
-                    <div class="paso" id="paso-receta">⏳ Generando receta...</div>
-                    <div class="paso" id="paso-impresion">⏳ Preparando impresión...</div>
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA CAPTURA DATOS -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-datos" class="screen">
+            <div class="glass-card form-card">
+                <!-- Header minimalista -->
+                <div class="card-header">
+                    <div class="avatar-small">
+                        <svg width="40" height="40" viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="18" fill="url(#avatarGradient)" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Datos del Paciente</h2>
+                        <p>Información necesaria para tu consulta</p>
+                    </div>
                 </div>
-                <p class="mensaje-espera">Por favor espera un momento</p>
-            </div>
-        </div>
 
-        <!-- Imprimiendo -->
-        <div id="pantalla-imprimiendo" class="pantalla">
-            <div class="impresion-container">
-                <div class="printer-animation">🖨️</div>
-                <h2>Imprimiendo tu receta...</h2>
-                <div class="progreso-barra">
-                    <div class="barra" id="barra-impresion"></div>
+                <!-- Formulario elegante -->
+                <div class="form-container">
+                    <div class="input-field">
+                        <label>Nombre Completo</label>
+                        <div class="input-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <input type="text" id="nombre" placeholder="Coloca tú Nombre y Apellido">
+                        </div>
+                    </div>
+
+                    <div class="input-field">
+                        <label>DNI</label>
+                        <div class="input-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="3" y="4" width="18" height="16" rx="2" />
+                                <line x1="7" y1="8" x2="17" y2="8" />
+                                <line x1="7" y1="12" x2="17" y2="12" />
+                            </svg>
+                            <input type="text" id="dni" maxlength="8" placeholder="12345678">
+                        </div>
+                    </div>
+
+                    <div class="input-field">
+                        <label>Edad <span class="optional">(opcional)</span></label>
+                        <div class="input-wrapper">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            <input type="number" id="edad" min="0" max="120" placeholder="30">
+                        </div>
+                    </div>
+
+                    <div class="validation-message" id="validacion"></div>
+
+                    <button class="btn-primary" onclick="capturarDatos()">
+                        <span>Continuar</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </button>
                 </div>
-                <p class="mensaje-recoge">¡Recoge tu ticket abajo! ⬇️</p>
             </div>
         </div>
 
-        <!-- Despedida -->
-        <div id="pantalla-despedida" class="pantalla">
-            <div class="despedida-container">
-                <div class="icono-exito">✅</div>
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA CHAT -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-chat" class="screen">
+            <div class="glass-card chat-card">
+                <!-- Header del chat -->
+                <div class="chat-header">
+                    <div class="chat-avatar">
+                        <svg width="40" height="40" viewBox="0 0 40 40">
+                            <circle cx="20" cy="20" r="18" fill="url(#avatarGradient)" />
+                        </svg>
+                        <span class="status-dot"></span>
+                    </div>
+                    <div class="chat-info">
+                        <h3 id="nombre-paciente">---</h3>
+                        <p id="dni-paciente">DNI: ---</p>
+                    </div>
+                    <button class="btn-close" onclick="confirmarTerminar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Área de mensajes -->
+                <div class="chat-messages" id="chat-mensajes"></div>
+
+                <!-- Typing indicator -->
+                <div class="typing-indicator" id="escribiendo" style="display: none;">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+
+                <!-- Input -->
+                <div class="chat-input">
+                    <input type="text" id="mensaje-input" placeholder="Escribe tu mensaje..."
+                        onkeypress="if(event.key==='Enter') enviarMensaje()">
+                    <button class="btn-icon" onclick="toggleVoz()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        </svg>
+                    </button>
+                    <button class="btn-icon btn-send" onclick="enviarMensaje()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA PROCESANDO -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-generando" class="screen">
+            <div class="glass-card processing-card">
+                <div class="loader">
+                    <svg class="circular" viewBox="25 25 50 50">
+                        <circle class="path" cx="50" cy="50" r="20" fill="none" stroke-width="3" />
+                    </svg>
+                </div>
+                <h2>Analizando tu caso</h2>
+                <p class="processing-text">Generando diagnóstico con IA...</p>
+
+                <div class="progress-steps">
+                    <div class="step active">
+                        <div class="step-icon">✓</div>
+                        <span>Diagnóstico</span>
+                    </div>
+                    <div class="step" id="paso-productos">
+                        <div class="step-icon"></div>
+                        <span>Productos</span>
+                    </div>
+                    <div class="step" id="paso-receta">
+                        <div class="step-icon"></div>
+                        <span>Receta</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA IMPRIMIENDO -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-imprimiendo" class="screen">
+            <div class="glass-card processing-card">
+                <div class="print-icon">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <polyline points="6 9 6 2 18 2 18 9" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                </div>
+                <h2>Imprimiendo receta</h2>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="print-progress"></div>
+                </div>
+                <p class="processing-text">Recoge tu ticket abajo</p>
+            </div>
+        </div>
+
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA DESPEDIDA -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-despedida" class="screen">
+            <div class="glass-card success-card">
+                <div class="success-icon">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                </div>
                 <h2>¡Gracias <span id="nombre-despedida"></span>!</h2>
-                
-                <div class="resumen">
+
+                <div class="summary">
                     <h3>Tu receta incluye:</h3>
                     <ul>
-                        <li>✅ Diagnóstico completo</li>
-                        <li>✅ Productos recomendados</li>
-                        <li>✅ Instrucciones de uso</li>
-                        <li>✅ Consejos de alimentación</li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Diagnóstico completo
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Productos recomendados
+                        </li>
+                        <li>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            Instrucciones de uso
+                        </li>
                     </ul>
                 </div>
-                
-                <div class="mensaje-final">
-                    <p>¡Que te mejores pronto! 💚</p>
-                </div>
-                
-                <div class="contador-regreso">
-                    Volviendo al inicio en <span id="contador">5</span> segundos...
+
+                <p class="farewell">¡Que te mejores pronto!</p>
+
+                <div class="countdown">
+                    <span id="contador">5</span>
                 </div>
             </div>
         </div>
 
-        <!-- Error -->
-        <div id="pantalla-error" class="pantalla">
-            <div class="error-container">
-                <div class="icono-error">⚠️</div>
-                <h2>Ups, algo salió mal</h2>
-                <p id="mensaje-error"></p>
-                <button class="btn-grande" onclick="volverInicio()">Volver al inicio</button>
+        <!-- ═════════════════════════════════════════════════ -->
+        <!-- PANTALLA ERROR -->
+        <!-- ═════════════════════════════════════════════════ -->
+        <div id="pantalla-error" class="screen">
+            <div class="glass-card error-card">
+                <div class="error-icon">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                </div>
+                <h2>Algo salió mal</h2>
+                <p id="mensaje-error">Error desconocido</p>
+                <button class="btn-primary" onclick="volverInicio()">
+                    <span>Volver al inicio</span>
+                </button>
             </div>
         </div>
     </div>
@@ -158,4 +321,5 @@
     <script src="js/voice.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

@@ -1,6 +1,7 @@
 """
-Medical Assistant - Cerebro principal de Kairos MEJORADO
-Preguntas dinámicas generadas por GPT + Conversación inteligente
+Medical Assistant - Doctor de Cabecera COMPLETO
+Versión CORREGIDA con nombre real del usuario
+Creado por Nilson Cayao
 """
 
 import sys
@@ -10,7 +11,6 @@ from datetime import datetime
 import json
 import requests
 
-# Agregar paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, os.path.join(BASE_DIR, 'backend'))
@@ -21,22 +21,19 @@ from backend.core.ia_config_manager import IAConfigManager
 
 class MedicalAssistant:
     """
-    Asistente médico virtual de Kairos - VERSIÓN MEJORADA
+    Doctor de Cabecera Virtual - Kairos
     
-    Mejoras v2.0:
-    - Preguntas dinámicas generadas por GPT
-    - Adaptación inteligente según respuestas
-    - Detección automática de información suficiente
-    - Modo conversacional natural
+    Características:
+    - Usa el nombre REAL del paciente
+    - Conversación natural y empática
+    - No repite saludos ni presentaciones
+    - Actúa como doctor de confianza
+    - Hace pocas preguntas pero relevantes
+    - Creado por Nilson Cayao
     """
     
     def __init__(self, modo_preguntas: str = 'dinamico'):
-        """
-        Inicializar asistente médico
-        
-        Args:
-            modo_preguntas: 'dinamico' (GPT) o 'estatico' (hardcoded)
-        """
+        """Inicializar asistente médico"""
         
         # Componentes
         self.classifier = IntentClassifier()
@@ -45,6 +42,16 @@ class MedicalAssistant:
         
         # Modo de preguntas
         self.modo_preguntas = modo_preguntas
+        
+        # INFORMACIÓN DEL USUARIO
+        self.usuario_nombre = None
+        self.usuario_primer_nombre = None
+        self.usuario_dni = None
+        
+        # CONTROL DE CONVERSACIÓN
+        self.ya_saludo = False
+        self.ya_se_presento = False
+        self.interacciones_totales = 0
         
         # Estado de la conversación
         self.contexto = {
@@ -60,132 +67,160 @@ class MedicalAssistant:
             'alergias': [],
             'preguntas_realizadas': [],
             'respuestas_usuario': [],
-            'informacion_clave': {}  # Para tracking de datos importantes
+            'informacion_clave': {}
         }
         
-        # Contador de preguntas
+        # Contador
         self.preguntas_realizadas = 0
-        self.max_preguntas = 8
+        self.max_preguntas = 6  # Menos preguntas, más análisis
         
         # Estado
         self.consulta_iniciada = False
         self.diagnostico_completo = False
         
-        print("🤖 Kairos Medical Assistant MEJORADO inicializado")
-        print(f"   Modo preguntas: {modo_preguntas.upper()}")
-        if modo_preguntas == 'dinamico':
-            if self.ia_config.esta_activo():
-                print(f"   ✅ GPT disponible para preguntas dinámicas")
-            else:
-                print(f"   ⚠️ GPT no disponible, usando modo estático")
+        print("🤖 Kairos - Doctor de Cabecera Virtual")
+        print(f"   Creado por: Nilson Cayao")
+        print(f"   Modo: {modo_preguntas.upper()}")
+        
+        if modo_preguntas == 'dinamico' and self.ia_config.esta_activo():
+            print(f"   IA: ✅ Activa")
+        else:
+            if modo_preguntas == 'dinamico':
+                print(f"   IA: ⚠️ No disponible, modo estático")
                 self.modo_preguntas = 'estatico'
-    
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # PROCESAMIENTO DE MENSAJES
-    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def procesar_mensaje(self, mensaje: str, usuario_info: Dict = None) -> Dict:
         """
-        Procesar mensaje del usuario y generar respuesta
+        Procesar mensaje del usuario
         
         Args:
             mensaje: Mensaje del usuario
-            usuario_info: Información del usuario (opcional)
-            
+            usuario_info: {'nombre': 'Juan Pérez', 'dni': '12345678', 'edad': 30}
+        
         Returns:
-            Dict con respuesta y datos
+            Dict con respuesta y metadata
         """
         
-        # Clasificar intención
-        intencion, confianza, probabilidades = self.classifier.predecir(mensaje)
+        # GUARDAR INFO DEL USUARIO (solo primera vez)
+        if usuario_info and not self.usuario_nombre:
+            self.usuario_nombre = usuario_info.get('nombre', '')
+            self.usuario_dni = usuario_info.get('dni', '')
+            
+            # Extraer primer nombre
+            if self.usuario_nombre:
+                self.usuario_primer_nombre = self.usuario_nombre.split()[0]
+            
+            print(f"👤 Paciente: {self.usuario_nombre} (DNI: {self.usuario_dni})")
         
-        print(f"💭 Intención: {intencion} ({confianza:.0%})")
+        self.interacciones_totales += 1
+        
+        # Clasificar intención
+        intencion, confianza, _ = self.classifier.predecir(mensaje)
+        
+        print(f"💭 Mensaje {self.interacciones_totales}: {intencion} ({confianza:.0%})")
         
         # Guardar en contexto
         self.contexto['preguntas_realizadas'].append(mensaje)
         
-        # Determinar tipo de respuesta según intención
+        # Generar respuesta según intención
         if intencion == 'saludo':
-            respuesta = self._respuesta_saludo(usuario_info)
-            tipo_respuesta = 'saludo'
+            respuesta = self._respuesta_saludo()
+            tipo = 'saludo'
             
         elif intencion == 'consulta_medica':
             respuesta = self._respuesta_consulta_medica(mensaje)
-            tipo_respuesta = 'consulta'
+            tipo = 'consulta'
             
         elif intencion == 'pregunta_producto':
             respuesta = self._respuesta_pregunta_producto(mensaje)
-            tipo_respuesta = 'info_producto'
+            tipo = 'info_producto'
             
         elif intencion == 'pregunta_uso':
             respuesta = self._respuesta_pregunta_uso(mensaje)
-            tipo_respuesta = 'info_uso'
+            tipo = 'info_uso'
             
         elif intencion == 'pregunta_precio':
             respuesta = self._respuesta_pregunta_precio(mensaje)
-            tipo_respuesta = 'info_precio'
+            tipo = 'info_precio'
             
         elif intencion == 'despedida':
             respuesta = self._respuesta_despedida()
-            tipo_respuesta = 'despedida'
+            tipo = 'despedida'
             
         else:
             respuesta = self._respuesta_desconocida(mensaje)
-            tipo_respuesta = 'desconocida'
+            tipo = 'desconocida'
         
         return {
             'respuesta': respuesta,
             'intencion': intencion,
             'confianza': confianza,
-            'tipo_respuesta': tipo_respuesta,
+            'tipo_respuesta': tipo,
             'contexto': self.contexto.copy(),
             'diagnostico_listo': self.diagnostico_completo
         }
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # RESPUESTAS POR TIPO
+    # RESPUESTAS
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
-    def _respuesta_saludo(self, usuario_info: Dict = None) -> str:
+    def _respuesta_saludo(self) -> str:
         """Respuesta a saludos"""
         
-        nombre = usuario_info.get('nombre', '') if usuario_info else ''
-        nombre_primero = nombre.split()[0] if nombre else ''
-        
-        if nombre_primero:
-            return f"¡Hola {nombre_primero}! 👋 Soy Kairos, tu asistente de salud natural. ¿En qué puedo ayudarte hoy?"
+        if not self.ya_saludo:
+            # Primera vez
+            self.ya_saludo = True
+            
+            if self.usuario_primer_nombre:
+                return f"¡Hola {self.usuario_primer_nombre}! 👋 Soy Kairos, tu médico de cabecera virtual en el que puedes confiar. ¿Qué molestia te trae hoy?"
+            else:
+                return "¡Hola! 👋 Soy Kairos, tu médico de cabecera virtual. ¿En qué puedo ayudarte?"
         else:
-            return "¡Hola! 👋 Soy Kairos, tu asistente de salud natural. ¿Qué molestia tienes?"
+            # Ya saludó antes
+            if self.usuario_primer_nombre:
+                return f"Hola de nuevo {self.usuario_primer_nombre} 😊. ¿En qué más te ayudo?"
+            else:
+                return "Hola otra vez. ¿Qué más necesitas?"
     
     def _respuesta_consulta_medica(self, mensaje: str) -> str:
-        """Respuesta a consulta médica - MEJORADO"""
+        """Respuesta a consulta médica - COMO DOCTOR REAL"""
         
-        # Extraer síntoma del mensaje
         sintoma = self._extraer_sintoma(mensaje)
         
         if not self.consulta_iniciada:
-            # Primera vez que menciona síntoma
+            # PRIMERA VEZ - Iniciar consulta
             self.consulta_iniciada = True
             self.contexto['sintoma_principal'] = sintoma
             
-            # Hacer primera pregunta (dinámica o estática)
-            return self._siguiente_pregunta_diagnostico()
+            # Respuesta empática + primera pregunta
+            if self.usuario_primer_nombre:
+                empatia = f"Entiendo {self.usuario_primer_nombre}, {sintoma}."
+            else:
+                empatia = f"Entiendo, {sintoma}."
             
+            primera_pregunta = self._siguiente_pregunta_diagnostico()
+            
+            return f"{empatia} {primera_pregunta}"
+        
         else:
-            # Ya estamos en consulta, guardar respuesta
+            # YA EN CONSULTA - Guardar respuesta y continuar
             self.contexto['respuestas_usuario'].append(mensaje)
             self.preguntas_realizadas += 1
             
-            # Analizar respuesta para extraer información clave
+            # Extraer información
             self._extraer_informacion_clave(mensaje)
             
-            # Verificar si ya tenemos suficiente información
+            # ¿Ya suficiente info?
             if self.preguntas_realizadas >= self.max_preguntas or self._tiene_info_suficiente():
                 self.diagnostico_completo = True
-                return "Perfecto, ya tengo toda la información necesaria. Dame un momento para analizar tu caso... 🔍"
-            else:
-                # Continuar con preguntas
-                return self._siguiente_pregunta_diagnostico()
+                
+                if self.usuario_primer_nombre:
+                    return f"Perfecto {self.usuario_primer_nombre}, ya tengo toda la información necesaria. Déjame analizar tu caso... 🔍"
+                else:
+                    return "Perfecto, ya tengo toda la información. Analizando tu caso... 🔍"
+            
+            # Siguiente pregunta
+            return self._siguiente_pregunta_diagnostico()
     
     def _respuesta_pregunta_producto(self, mensaje: str) -> str:
         """Respuesta sobre productos"""
@@ -195,115 +230,82 @@ class MedicalAssistant:
         if 'moringa' in mensaje_lower:
             producto = self.productos.obtener_por_id(1)
             if producto:
-                return f"""🌿 **{producto['nombre']}**
-
-**¿Qué es?**
-{producto['descripcion_corta']}
+                return f"""🌿 **Moringa**
 
 **Para qué sirve:**
-{producto['para_que_sirve']}
+{producto.get('para_que_sirve', 'Balance hormonal, energía, antiinflamatorio')}
 
-**Beneficios principales:**
-{producto['beneficios']}
+**Precio:** S/. {producto.get('precio', 35):.2f}
 
-**Precio:** S/. {producto['precio']:.2f}
-
-¿Tienes alguna otra pregunta sobre la moringa?"""
+¿Quieres saber el modo de uso{', ' + self.usuario_primer_nombre if self.usuario_primer_nombre else ''}?"""
         
-        elif 'ganoderma' in mensaje_lower or 'reishi' in mensaje_lower:
+        elif 'ganoderma' in mensaje_lower:
             producto = self.productos.obtener_por_id(2)
             if producto:
-                return f"""🍄 **{producto['nombre']}**
-
-**¿Qué es?**
-{producto['descripcion_corta']}
+                return f"""🍄 **Ganoderma (Reishi)**
 
 **Para qué sirve:**
-{producto['para_que_sirve']}
+{producto.get('para_que_sirve', 'Reduce estrés, mejora sueño, fortalece defensas')}
 
-**Beneficios principales:**
-{producto['beneficios']}
+**Precio:** S/. {producto.get('precio', 40):.2f}
 
-**Precio:** S/. {producto['precio']:.2f}
-
-¿Tienes alguna otra pregunta sobre el ganoderma?"""
+¿Necesitas más información?"""
         
-        # Respuesta genérica
-        productos = self.productos.obtener_todos()
-        lista = "\n".join([f"• {p['nombre']} - S/. {p['precio']:.2f}" for p in productos])
-        
-        return f"""💊 **Nuestros Productos Naturales:**
-
-{lista}
-
-¿Sobre cuál te gustaría saber más?"""
+        return "Tenemos **Moringa** y **Ganoderma**. ¿Sobre cuál quieres saber?"
     
     def _respuesta_pregunta_uso(self, mensaje: str) -> str:
         """Respuesta sobre modo de uso"""
         
-        return """📋 **Modo de Uso General:**
+        return f"""Para darte el modo de uso exacto{', ' + self.usuario_primer_nombre if self.usuario_primer_nombre else ''}, necesito saber:
 
-Para darte la información exacta de cómo tomar el producto, primero necesito saber:
+1. ¿Qué producto? (Moringa o Ganoderma)
+2. ¿Para qué molestia?
 
-1. ¿Qué producto específico te interesa? (Moringa, Ganoderma, Aceite)
-2. ¿Para qué molestia lo necesitas?
-
-Así puedo darte las instrucciones precisas y personalizadas. 😊"""
+Así te doy instrucciones precisas."""
     
     def _respuesta_pregunta_precio(self, mensaje: str) -> str:
         """Respuesta sobre precios"""
         
         productos = self.productos.obtener_todos()
         
-        respuesta = "💰 **Nuestros Precios:**\n\n"
+        respuesta = "💰 **Precios:**\n\n"
+        for p in productos:
+            respuesta += f"• {p['nombre']}: S/. {p['precio']:.2f}\n"
         
-        for producto in productos:
-            respuesta += f"• {producto['nombre']}\n"
-            respuesta += f"  **S/. {producto['precio']:.2f}**\n"
-            respuesta += f"  ({producto['presentacion']})\n\n"
-        
-        respuesta += "\n📦 **Nota:** El precio incluye el tratamiento completo recomendado.\n"
-        respuesta += "¿Te gustaría saber qué producto se ajusta mejor a tu caso?"
+        respuesta += f"\n¿Te gustaría que diagnostique tu caso{', ' + self.usuario_primer_nombre if self.usuario_primer_nombre else ''}?"
         
         return respuesta
     
     def _respuesta_despedida(self) -> str:
         """Respuesta a despedida"""
         
-        return """¡De nada! 😊 Fue un gusto ayudarte.
-
-Recuerda:
-✅ Sigue las indicaciones de la receta
-✅ Mantén hábitos saludables
-✅ Si tienes dudas, vuelve cuando quieras
-
-¡Que te mejores pronto! 💚
-
-*Puedes encontrar los productos en nuestra botica.*"""
+        if self.usuario_primer_nombre:
+            return f"¡Cuídate mucho {self.usuario_primer_nombre}! Si necesitas algo más, aquí estoy. ¡Que te mejores! 💚"
+        else:
+            return "¡Cuídate! Si necesitas algo más, aquí estoy. ¡Que te mejores! 💚"
     
     def _respuesta_desconocida(self, mensaje: str) -> str:
-        """Respuesta cuando no se entiende"""
+        """Respuesta cuando no entiende"""
         
-        return """Disculpa, no entendí bien tu pregunta. 🤔
+        # Si está en consulta, asumir que es respuesta a pregunta
+        if self.consulta_iniciada:
+            return self._respuesta_consulta_medica(mensaje)
+        
+        return f"""No entendí bien{', ' + self.usuario_primer_nombre if self.usuario_primer_nombre else ''}. 🤔
 
 Puedo ayudarte con:
-- 🏥 Consultas médicas sobre tus síntomas
-- 💊 Información sobre productos naturales
-- 💰 Precios de productos
-- 📋 Cómo usar los productos
+• 🏥 Consultas médicas
+• 💊 Información de productos
+• 💰 Precios
 
-¿Sobre qué te gustaría que hablemos?"""
+¿Qué necesitas?"""
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # GENERACIÓN DE PREGUNTAS - MEJORADO
+    # GENERACIÓN DE PREGUNTAS
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def _siguiente_pregunta_diagnostico(self) -> str:
-        """
-        Generar siguiente pregunta para diagnóstico
-        MODO DINÁMICO: Usa GPT para generar pregunta inteligente
-        MODO ESTÁTICO: Usa preguntas predefinidas
-        """
+        """Generar siguiente pregunta"""
         
         if self.modo_preguntas == 'dinamico' and self.ia_config.esta_activo():
             return self._generar_pregunta_con_gpt()
@@ -311,50 +313,40 @@ Puedo ayudarte con:
             return self._generar_pregunta_estatica()
     
     def _generar_pregunta_con_gpt(self) -> str:
-        """
-        Generar pregunta usando GPT basándose en el contexto actual
-        """
+        """Generar pregunta con GPT"""
         
-        # Construir contexto para GPT
         sintoma = self.contexto['sintoma_principal']
-        respuestas_previas = "\n".join([
-            f"- {r}" for r in self.contexto['respuestas_usuario']
-        ])
+        respuestas = "\n".join([f"- {r}" for r in self.contexto['respuestas_usuario']])
         
-        preguntas_ya_hechas = len(self.contexto['respuestas_usuario'])
-        preguntas_restantes = self.max_preguntas - preguntas_ya_hechas
-        
-        # Información ya capturada
         info_capturada = []
         if self.contexto.get('ubicacion_dolor'):
             info_capturada.append(f"Ubicación: {self.contexto['ubicacion_dolor']}")
         if self.contexto.get('duracion'):
             info_capturada.append(f"Duración: {self.contexto['duracion']}")
         if self.contexto.get('intensidad'):
-            info_capturada.append(f"Intensidad: {self.contexto['intensidad']}")
+            info_capturada.append(f"Intensidad: {self.contexto['intensidad']}/10")
         
-        info_str = "\n".join(info_capturada) if info_capturada else "Ninguna aún"
+        info_str = "\n".join(info_capturada) if info_capturada else "Ninguna"
         
-        prompt = f"""Eres un asistente médico haciendo un diagnóstico.
+        prompt = f"""Eres Kairos, médico de cabecera cálido.
 
-SÍNTOMA PRINCIPAL: {sintoma}
+PACIENTE: {self.usuario_nombre or 'Paciente'}
+SÍNTOMA: {sintoma}
 
-RESPUESTAS PREVIAS DEL PACIENTE:
-{respuestas_previas if respuestas_previas else "Ninguna aún"}
+RESPUESTAS PREVIAS:
+{respuestas or 'Ninguna'}
 
-INFORMACIÓN YA CAPTURADA:
+INFO CAPTURADA:
 {info_str}
 
-PREGUNTAS RESTANTES: {preguntas_restantes}
-
 GENERA UNA PREGUNTA:
-- Corta y directa (máximo 15 palabras)
+- Corta (máximo 12 palabras)
+- Empática y natural
 - Que ayude al diagnóstico
-- Que NO repita información ya obtenida
-- Enfocada en: ubicación, duración, intensidad, factores que mejoran/empeoran, síntomas adicionales
+- NO repitas info ya capturada
+- Usa el nombre del paciente si lo tienes
 
-Responde SOLO con la pregunta, sin explicaciones.
-"""
+SOLO LA PREGUNTA:"""
         
         try:
             config = self.ia_config.obtener_config()
@@ -368,11 +360,11 @@ Responde SOLO con la pregunta, sin explicaciones.
                 json={
                     'model': config['modelo'],
                     'messages': [
-                        {'role': 'system', 'content': 'Eres asistente médico conciso.'},
+                        {'role': 'system', 'content': 'Eres médico empático.'},
                         {'role': 'user', 'content': prompt}
                     ],
                     'temperature': 0.7,
-                    'max_tokens': 50
+                    'max_tokens': 40
                 },
                 timeout=10
             )
@@ -380,163 +372,128 @@ Responde SOLO con la pregunta, sin explicaciones.
             if response.status_code == 200:
                 data = response.json()
                 pregunta = data['choices'][0]['message']['content'].strip()
-                
-                # Limpiar pregunta
                 pregunta = pregunta.replace('"', '').replace("'", '')
                 
-                print(f"   🤖 Pregunta GPT: {pregunta}")
-                
-                # Incrementar contador de IA
-                self.ia_config.incrementar_consulta(0.001)  # Costo bajo por pregunta
+                self.ia_config.incrementar_consulta(0.001)
                 
                 return pregunta
             else:
-                print(f"   ⚠️ GPT falló, usando pregunta estática")
                 return self._generar_pregunta_estatica()
                 
         except Exception as e:
-            print(f"   ⚠️ Error GPT: {e}, usando pregunta estática")
+            print(f"   ⚠️ GPT error: {e}")
             return self._generar_pregunta_estatica()
     
     def _generar_pregunta_estatica(self) -> str:
-        """
-        Generar pregunta usando lógica predefinida (fallback)
-        """
+        """Preguntas predefinidas (fallback)"""
         
-        preguntas_realizadas = len(self.contexto['respuestas_usuario'])
+        n = len(self.contexto['respuestas_usuario'])
+        nombre = self.usuario_primer_nombre
         
-        # Preguntas clave en orden de prioridad
-        if preguntas_realizadas == 0:
-            return f"Entiendo que tienes {self.contexto['sintoma_principal']}. ¿Dónde exactamente sientes esta molestia?"
-        
-        elif preguntas_realizadas == 1 and not self.contexto.get('duracion'):
-            return "¿Desde hace cuánto tiempo tienes este problema? (días, semanas, meses)"
-        
-        elif preguntas_realizadas == 2 and not self.contexto.get('intensidad'):
-            return "En una escala del 1 al 10, ¿qué tan fuerte es la molestia? (1=leve, 10=insoportable)"
-        
-        elif preguntas_realizadas == 3 and not self.contexto.get('momento_dia'):
-            return "¿En qué momento del día es peor? (mañana, tarde, noche, todo el día)"
-        
-        elif preguntas_realizadas == 4 and len(self.contexto['factores_mejoran']) == 0:
-            return "¿Algo hace que mejore? (descanso, comida, medicamento)"
-        
-        elif preguntas_realizadas == 5 and len(self.contexto['factores_empeoran']) == 0:
-            return "¿Algo hace que empeore? (estrés, ciertos alimentos, actividades)"
-        
-        elif preguntas_realizadas == 6:
-            return "¿Tomas algún medicamento actualmente?"
-        
+        if n == 0:
+            return f"¿Dónde exactamente{', ' + nombre if nombre else ''}?"
+        elif n == 1:
+            return f"¿Desde hace cuánto tiempo{', ' + nombre if nombre else ''}?"
+        elif n == 2:
+            return "Del 1 al 10, ¿qué tan fuerte es?"
+        elif n == 3:
+            return "¿En qué momento del día es peor?"
+        elif n == 4:
+            return "¿Algo hace que mejore?"
         else:
-            return "¿Tienes alguna alergia a alimentos o medicamentos?"
+            return "¿Algo hace que empeore?"
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    # ANÁLISIS Y EXTRACCIÓN
+    # ANÁLISIS
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def _extraer_informacion_clave(self, respuesta: str):
-        """
-        Extraer información clave de la respuesta del usuario
-        Actualiza el contexto automáticamente
-        """
+        """Extraer información de la respuesta"""
         
         respuesta_lower = respuesta.lower()
         
-        # Detectar ubicación de dolor
-        ubicaciones = ['cabeza', 'frente', 'sienes', 'nuca', 'estómago', 'barriga', 
-                      'pecho', 'espalda', 'piernas', 'brazos', 'cuello']
+        # Ubicación
+        ubicaciones = ['cabeza', 'frente', 'sienes', 'nuca', 'estomago', 'barriga',
+                      'pecho', 'espalda', 'piernas', 'brazos', 'cuello', 'muslo',
+                      'pantorrilla', 'pie', 'mano']
         for ub in ubicaciones:
             if ub in respuesta_lower:
                 self.contexto['ubicacion_dolor'] = ub
                 break
         
-        # Detectar duración
-        if 'día' in respuesta_lower or 'dias' in respuesta_lower:
+        # Duración
+        if 'dia' in respuesta_lower or 'dias' in respuesta_lower:
             self.contexto['duracion'] = 'días'
         elif 'semana' in respuesta_lower or 'semanas' in respuesta_lower:
             self.contexto['duracion'] = 'semanas'
         elif 'mes' in respuesta_lower or 'meses' in respuesta_lower:
             self.contexto['duracion'] = 'meses'
-        elif 'año' in respuesta_lower or 'años' in respuesta_lower:
-            self.contexto['duracion'] = 'años'
         
-        # Detectar intensidad (números)
+        # Intensidad
         import re
         numeros = re.findall(r'\b([0-9]|10)\b', respuesta)
         if numeros:
             self.contexto['intensidad'] = int(numeros[0])
         
-        # Detectar momento del día
-        momentos = ['mañana', 'tarde', 'noche', 'madrugada']
-        for momento in momentos:
-            if momento in respuesta_lower:
-                self.contexto['momento_dia'] = momento
-                break
+        # Momento
+        if 'manana' in respuesta_lower or 'matutino' in respuesta_lower:
+            self.contexto['momento_dia'] = 'mañana'
+        elif 'tarde' in respuesta_lower:
+            self.contexto['momento_dia'] = 'tarde'
+        elif 'noche' in respuesta_lower:
+            self.contexto['momento_dia'] = 'noche'
         
-        # Detectar factores que mejoran
+        # Factores
         if 'descanso' in respuesta_lower or 'dormir' in respuesta_lower:
-            self.contexto['factores_mejoran'].append('descanso')
-        if 'comida' in respuesta_lower or 'comer' in respuesta_lower:
-            self.contexto['factores_mejoran'].append('alimentación')
+            if 'descanso' not in self.contexto['factores_mejoran']:
+                self.contexto['factores_mejoran'].append('descanso')
         
-        # Detectar factores que empeoran
-        if 'estrés' in respuesta_lower or 'estres' in respuesta_lower:
-            self.contexto['factores_empeoran'].append('estrés')
-        if 'actividad' in respuesta_lower or 'ejercicio' in respuesta_lower:
-            self.contexto['factores_empeoran'].append('actividad física')
+        if 'estres' in respuesta_lower or 'trabajo' in respuesta_lower:
+            if 'estrés' not in self.contexto['factores_empeoran']:
+                self.contexto['factores_empeoran'].append('estrés')
     
     def _extraer_sintoma(self, mensaje: str) -> str:
-        """
-        Extraer síntoma principal del mensaje
-        """
+        """Extraer síntoma del mensaje"""
+        
         mensaje_lower = mensaje.lower()
         
-        # Diccionario de síntomas comunes
-        sintomas_conocidos = {
+        sintomas = {
             'cabeza': 'dolor de cabeza',
             'cefalea': 'dolor de cabeza',
-            'migraña': 'migraña',
-            'estómago': 'dolor de estómago',
+            'migrana': 'migraña',
+            'estomago': 'dolor de estómago',
             'barriga': 'dolor de estómago',
             'gastritis': 'gastritis',
             'cansancio': 'fatiga crónica',
+            'cansado': 'fatiga crónica',
             'fatiga': 'fatiga crónica',
-            'agotado': 'fatiga crónica',
-            'estrés': 'estrés',
+            'estres': 'estrés',
             'ansiedad': 'ansiedad',
             'insomnio': 'insomnio',
-            'dormir': 'problemas de sueño',
-            'quiste': 'quistes ováricos',
-            'menstruación': 'irregularidad menstrual',
-            'regla': 'irregularidad menstrual'
+            'muscular': 'dolor muscular',
+            'musculo': 'dolor muscular',
+            'pierna': 'dolor en pierna',
+            'golpe': 'contusión por golpe'
         }
         
-        # Buscar síntoma conocido
-        for palabra_clave, sintoma in sintomas_conocidos.items():
-            if palabra_clave in mensaje_lower:
+        for palabra, sintoma in sintomas.items():
+            if palabra in mensaje_lower:
                 return sintoma
         
-        # Si no encuentra, usar el mensaje completo
         return mensaje.strip()
     
     def _tiene_info_suficiente(self) -> bool:
-        """
-        Verificar si tenemos suficiente información para diagnóstico
-        """
-        # Criterios mínimos
-        tiene_sintoma = self.contexto['sintoma_principal'] is not None
-        tiene_respuestas = len(self.contexto['respuestas_usuario']) >= 5
+        """Verificar si ya hay suficiente info"""
         
-        # Verificar información clave capturada
+        tiene_sintoma = self.contexto['sintoma_principal'] is not None
+        tiene_respuestas = len(self.contexto['respuestas_usuario']) >= 4
+        
         info_clave = sum([
             self.contexto.get('ubicacion_dolor') is not None,
             self.contexto.get('duracion') is not None,
             self.contexto.get('intensidad') is not None,
-            len(self.contexto.get('factores_mejoran', [])) > 0 or 
-            len(self.contexto.get('factores_empeoran', [])) > 0
         ])
         
-        # Necesitamos al menos el síntoma + 5 respuestas + 2 datos clave
         return tiene_sintoma and tiene_respuestas and info_clave >= 2
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -544,22 +501,26 @@ Responde SOLO con la pregunta, sin explicaciones.
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def obtener_resumen_consulta(self) -> Dict:
-        """
-        Obtener resumen de la consulta
-        """
+        """Resumen de consulta"""
         return {
             'sintoma_principal': self.contexto['sintoma_principal'],
-            'sintomas_adicionales': self.contexto['sintomas_adicionales'],
             'respuestas': self.contexto['respuestas_usuario'],
-            'preguntas': self.contexto['preguntas_realizadas'],
-            'total_interacciones': self.preguntas_realizadas,
-            'diagnostico_completo': self.diagnostico_completo,
-            'informacion_clave': self.contexto['informacion_clave'],
-            'modo_preguntas': self.modo_preguntas
+            'usuario': self.usuario_nombre,
+            'dni': self.usuario_dni,
+            'total_interacciones': self.interacciones_totales,
+            'diagnostico_completo': self.diagnostico_completo
         }
     
     def reiniciar_conversacion(self):
-        """Reiniciar para nueva consulta"""
+        """Reiniciar para nuevo paciente"""
+        
+        self.usuario_nombre = None
+        self.usuario_primer_nombre = None
+        self.usuario_dni = None
+        self.ya_saludo = False
+        self.ya_se_presento = False
+        self.interacciones_totales = 0
+        
         self.contexto = {
             'sintoma_principal': None,
             'sintomas_adicionales': [],
@@ -579,66 +540,40 @@ Responde SOLO con la pregunta, sin explicaciones.
         self.preguntas_realizadas = 0
         self.consulta_iniciada = False
         self.diagnostico_completo = False
-        
-        print("🔄 Conversación reiniciada")
 
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# PRUEBAS
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 if __name__ == "__main__":
     print("="*70)
-    print(" "*15 + "🧪 TEST MEDICAL ASSISTANT MEJORADO")
+    print("🧪 TEST MEDICAL ASSISTANT CORREGIDO")
     print("="*70)
-    print()
     
-    # Crear asistente (modo dinámico si GPT está disponible)
-    asistente = MedicalAssistant(modo_preguntas='dinamico')
+    asistente = MedicalAssistant(modo_preguntas='estatico')
     
-    # Simular conversación
-    mensajes_prueba = [
-        "Hola",
-        "Me duele mucho la cabeza",
-        "En la frente y las sienes",
-        "Como una semana",
-        "Un 7 de 10",
-        "Por las mañanas es peor",
-        "Mejora cuando descanso",
-        "Empeora con el estrés"
-    ]
-    
-    usuario_info = {
-        'nombre': 'María López',
-        'edad': 32
+    # Simular conversación con nombre real
+    usuario = {
+        'nombre': 'Jhonny Cayao',
+        'dni': '47458840',
+        'edad': 28
     }
     
-    print("👤 Usuario: María López\n")
-    print("━"*70)
-    print("CONVERSACIÓN SIMULADA")
-    print("━"*70)
-    print()
+    mensajes = [
+        "hola",
+        "tengo dolores musculares",
+        "en el muslo",
+        "como una semana",
+        "un 7",
+        "al caminar"
+    ]
     
-    for i, mensaje in enumerate(mensajes_prueba, 1):
-        print(f"👤 Usuario: {mensaje}")
-        
-        resultado = asistente.procesar_mensaje(mensaje, usuario_info)
-        
+    print(f"\n👤 Paciente: {usuario['nombre']} (DNI: {usuario['dni']})\n")
+    
+    for msg in mensajes:
+        print(f"👤 Usuario: {msg}")
+        resultado = asistente.procesar_mensaje(msg, usuario)
         print(f"🤖 Kairos: {resultado['respuesta']}\n")
         
         if resultado['diagnostico_listo']:
-            print("✅ Diagnóstico listo para generar\n")
+            print("✅ Listo para diagnóstico\n")
             break
     
-    # Resumen
-    print("━"*70)
-    print("RESUMEN DE CONSULTA")
-    print("━"*70)
-    resumen = asistente.obtener_resumen_consulta()
-    print(f"Síntoma principal: {resumen['sintoma_principal']}")
-    print(f"Modo preguntas: {resumen['modo_preguntas']}")
-    print(f"Total preguntas: {len(resumen['preguntas'])}")
-    print(f"Total respuestas: {len(resumen['respuestas'])}")
-    print(f"Diagnóstico completo: {resumen['diagnostico_completo']}")
-    
-    print("\n" + "="*70)
+    print("="*70)

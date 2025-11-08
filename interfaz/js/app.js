@@ -1,6 +1,8 @@
 /**
- * Aplicación principal de Kairos
- * Lógica de flujo y UI
+ * ═══════════════════════════════════════════════════════════════
+ * KAIROS - Aplicación Principal
+ * Versión Minimalista Elegante
+ * ═══════════════════════════════════════════════════════════════
  */
 
 class KairosApp {
@@ -19,7 +21,7 @@ class KairosApp {
      * Inicializar aplicación
      */
     async inicializar() {
-        console.log('🚀 Kairos App inicializada');
+        console.log('✨ Kairos Minimalista cargado');
         
         // Verificar conexión API
         const conectado = await api.healthCheck();
@@ -54,22 +56,22 @@ class KairosApp {
     }
 
     /**
-     * Cambiar pantalla
+     * Cambiar pantalla (screen en vez de pantalla)
      */
-    cambiarPantalla(pantalla) {
+    cambiarPantalla(nombre) {
         // Ocultar todas
-        document.querySelectorAll('.pantalla').forEach(p => {
-            p.classList.remove('activa');
+        document.querySelectorAll('.screen').forEach(s => {
+            s.classList.remove('active');
         });
 
         // Mostrar nueva
-        const elemento = document.getElementById(`pantalla-${pantalla}`);
+        const elemento = document.getElementById(`pantalla-${nombre}`);
         if (elemento) {
-            elemento.classList.add('activa');
-            this.estado = pantalla;
+            elemento.classList.add('active');
+            this.estado = nombre;
         }
 
-        console.log(`📺 Pantalla: ${pantalla}`);
+        console.log(`📺 Pantalla: ${nombre}`);
     }
 
     /**
@@ -124,9 +126,9 @@ class KairosApp {
                 // Ir a chat
                 this.cambiarPantalla('chat');
                 
-                // Mensaje inicial con nombre correcto
+                // Mensaje inicial
                 const primerNombre = nombre.split(' ')[0];
-                const mensajeBienvenida = `Hola ${primerNombre}! ¿En qué puedo ayudarte hoy?`;
+                const mensajeBienvenida = `Hola ${primerNombre}, ¿en qué puedo ayudarte hoy?`;
                 
                 this.agregarMensajeKairos(mensajeBienvenida);
                 
@@ -148,11 +150,11 @@ class KairosApp {
         const errores = [];
         
         if (!nombre || nombre.length < 6) {
-            errores.push('Ingresa nombre completo (mínimo 6 caracteres)');
+            errores.push('Ingresa tu nombre completo (mínimo 6 caracteres)');
         }
         
         if (!/^\d{8}$/.test(dni)) {
-            errores.push('DNI debe tener 8 dígitos');
+            errores.push('El DNI debe tener exactamente 8 dígitos');
         }
         
         if (edad && (edad < 0 || edad > 120)) {
@@ -173,10 +175,10 @@ class KairosApp {
         
         if (errores.length === 0) {
             div.innerHTML = '';
-            div.className = 'validacion';
+            div.className = 'validation-message';
         } else {
-            div.innerHTML = errores.map(e => `❌ ${e}`).join('<br>');
-            div.className = 'validacion error';
+            div.innerHTML = errores.map(e => `• ${e}`).join('<br>');
+            div.className = 'validation-message error';
         }
     }
 
@@ -194,7 +196,7 @@ class KairosApp {
         input.value = '';
         
         // Mostrar indicador "escribiendo"
-        document.getElementById('escribiendo').style.display = 'block';
+        document.getElementById('escribiendo').style.display = 'flex';
         
         try {
             const result = await api.enviarMensaje(mensaje);
@@ -206,8 +208,10 @@ class KairosApp {
                 // Agregar respuesta de Kairos
                 this.agregarMensajeKairos(result.resultado.respuesta);
                 
-                // Hablar respuesta
-                voz.hablar(result.resultado.respuesta);
+                // Hablar respuesta si voz está activa
+                if (voz && voz.vozActiva) {
+                    voz.hablar(result.resultado.respuesta);
+                }
                 
                 // Verificar si está listo para diagnóstico
                 if (result.resultado.diagnostico_listo) {
@@ -228,7 +232,7 @@ class KairosApp {
         
         const div = document.createElement('div');
         div.className = 'mensaje usuario';
-        div.innerHTML = `<div class="mensaje-bubble">${texto}</div>`;
+        div.innerHTML = `<div class="mensaje-bubble">${this.escaparHTML(texto)}</div>`;
         
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
@@ -239,10 +243,19 @@ class KairosApp {
         
         const div = document.createElement('div');
         div.className = 'mensaje kairos';
-        div.innerHTML = `<div class="mensaje-bubble">${texto}</div>`;
+        div.innerHTML = `<div class="mensaje-bubble">${this.escaparHTML(texto)}</div>`;
         
         container.appendChild(div);
         container.scrollTop = container.scrollHeight;
+    }
+
+    /**
+     * Escapar HTML para prevenir XSS
+     */
+    escaparHTML(texto) {
+        const div = document.createElement('div');
+        div.textContent = texto;
+        return div.innerHTML;
     }
 
     /**
@@ -254,24 +267,24 @@ class KairosApp {
         
         // Simular progreso
         setTimeout(() => {
-            document.getElementById('paso-productos').classList.add('activo');
+            const paso = document.getElementById('paso-productos');
+            if (paso) paso.classList.add('active');
         }, 1000);
         
         setTimeout(() => {
-            document.getElementById('paso-receta').classList.add('activo');
+            const paso = document.getElementById('paso-receta');
+            if (paso) paso.classList.add('active');
         }, 2000);
-        
-        setTimeout(() => {
-            document.getElementById('paso-impresion').classList.add('activo');
-        }, 3000);
         
         try {
             const result = await api.finalizarSesion();
             
             if (result.success) {
                 // Ir a imprimir
-                this.cambiarPantalla('imprimiendo');
-                this.simularImpresion();
+                setTimeout(() => {
+                    this.cambiarPantalla('imprimiendo');
+                    this.simularImpresion();
+                }, 3000);
             } else {
                 this.mostrarError('Error finalizando consulta');
             }
@@ -284,12 +297,14 @@ class KairosApp {
      * Simular impresión
      */
     simularImpresion() {
-        const barra = document.getElementById('barra-impresion');
+        const barra = document.getElementById('print-progress');
         let progreso = 0;
         
         const intervalo = setInterval(() => {
             progreso += 10;
-            barra.style.width = `${progreso}%`;
+            if (barra) {
+                barra.style.width = `${progreso}%`;
+            }
             
             if (progreso >= 100) {
                 clearInterval(intervalo);
@@ -302,7 +317,7 @@ class KairosApp {
      * Mostrar despedida
      */
     mostrarDespedida() {
-    // Ir a despedida
+        // Ir a despedida
         this.cambiarPantalla('despedida');
         
         // Nombre correcto del usuario
@@ -319,7 +334,9 @@ class KairosApp {
         
         const intervalo = setInterval(() => {
             segundos--;
-            contador.textContent = segundos;
+            if (contador) {
+                contador.textContent = segundos;
+            }
             
             if (segundos <= 0) {
                 clearInterval(intervalo);
@@ -337,11 +354,24 @@ class KairosApp {
         this.mensajes = [];
         
         // Limpiar formularios
-        document.getElementById('nombre').value = '';
-        document.getElementById('dni').value = '';
-        document.getElementById('edad').value = '';
-        document.getElementById('mensaje-input').value = '';
-        document.getElementById('chat-mensajes').innerHTML = '';
+        const inputs = ['nombre', 'dni', 'edad', 'mensaje-input'];
+        inputs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        
+        // Limpiar chat
+        const chatMensajes = document.getElementById('chat-mensajes');
+        if (chatMensajes) {
+            chatMensajes.innerHTML = '';
+        }
+        
+        // Limpiar validación
+        const validacion = document.getElementById('validacion');
+        if (validacion) {
+            validacion.innerHTML = '';
+            validacion.className = 'validation-message';
+        }
         
         // Volver a inicio
         this.cambiarPantalla('espera');
@@ -356,7 +386,10 @@ class KairosApp {
      * Mostrar error
      */
     mostrarError(mensaje) {
-        document.getElementById('mensaje-error').textContent = mensaje;
+        const errorElement = document.getElementById('mensaje-error');
+        if (errorElement) {
+            errorElement.textContent = mensaje;
+        }
         this.cambiarPantalla('error');
     }
 
@@ -365,12 +398,30 @@ class KairosApp {
      */
     resetearInactividad() {
         // Implementar si es necesario
+        let timeoutId;
+        
+        const reiniciarTimer = () => {
+            clearTimeout(timeoutId);
+            if (this.estado !== 'espera') {
+                timeoutId = setTimeout(() => {
+                    console.log('⏰ Tiempo de inactividad alcanzado');
+                    this.resetear();
+                }, 300000); // 5 minutos
+            }
+        };
+        
+        // Detectar actividad
+        ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+            document.addEventListener(event, reiniciarTimer);
+        });
+        
+        reiniciarTimer();
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════
 // FUNCIONES GLOBALES (llamadas desde HTML)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ═══════════════════════════════════════════════════════════════
 
 let app;
 
@@ -380,38 +431,51 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function iniciarConsulta() {
-    app.iniciarConsulta();
+    if (app) app.iniciarConsulta();
 }
 
 function capturarDatos() {
-    app.capturarDatos();
+    if (app) app.capturarDatos();
 }
 
 function enviarMensaje() {
-    app.enviarMensaje();
+    if (app) app.enviarMensaje();
 }
 
 function volverInicio() {
-    app.resetear();
+    if (app) app.resetear();
 }
 
 function confirmarTerminar() {
     if (confirm('¿Seguro que quieres terminar la consulta?')) {
-        app.resetear();
+        if (app) app.resetear();
     }
 }
 
 // Voz
 async function dictarNombre() {
+    if (!voz) {
+        console.error('Sistema de voz no disponible');
+        return;
+    }
+    
     try {
         const texto = await voz.escuchar();
-        document.getElementById('nombre').value = texto;
+        const inputNombre = document.getElementById('nombre');
+        if (inputNombre) {
+            inputNombre.value = texto;
+        }
     } catch (error) {
         console.error('Error dictado:', error);
     }
 }
 
 function toggleVoz() {
-    const activa = voz.toggle();
-    // Cambiar icono si quieres
+    if (voz) {
+        const activa = voz.toggle();
+        console.log(`🔊 Voz: ${activa ? 'ON' : 'OFF'}`);
+    }
 }
+
+// Exportar para debugging
+window.KairosApp = app;
