@@ -1,6 +1,9 @@
 """
-GPT Orchestrator V3.0
+GPT Orchestrator V4.0 - 100% CONVERSACIONAL + CONFIGURACIÓN DINÁMICA
 ✅ Identidad: Creador Nilson Cayao
+✅ Sin límites hardcodeados de preguntas
+✅ Detecta mensajes repetidos y confusión
+✅ Lee configuración desde panel admin (modelo, temperatura, etc.)
 ✅ Investiga plantas y remedios CON WEB SEARCH REAL
 ✅ Guarda en BD automáticamente
 """
@@ -28,7 +31,7 @@ except:
     print("⚠️ WebSearcher no disponible")
 
 class GPTOrchestrator:
-    """Orquestador GPT con investigación"""
+    """Orquestador GPT 100% conversacional como doctor real"""
     
     def __init__(self):
         self.ia_config = IAConfigManager()
@@ -36,57 +39,107 @@ class GPTOrchestrator:
         self.plantas = PlantasMedicinalesManager()
         self.remedios = RemediosCaserosManager()
         
+        # ⭐ CAMBIO 1: Eliminar límite hardcodeado
         self.preguntas_realizadas = 0
-        self.max_preguntas = 5
+        self.preguntas_sugeridas = 8  # Solo referencia, NO límite obligatorio
         
-        # Identidad de Kairos
+        # ⭐ CAMBIO 2: Identidad mejorada - Doctor de cabecera REAL
         self.identidad = """
-Eres Kairos, un médico naturista especializado en medicina natural y holística.
+Eres Kairos, un médico de cabecera especializado en medicina natural y holística.
 
 TU CREADOR: Nilson Cayao, un joven peruano apasionado por la tecnología y la medicina natural.
 Nilson desarrolló Kairos con inteligencia artificial para ayudar a las personas a encontrar 
 soluciones naturales a sus problemas de salud.
 
-CARACTERÍSTICAS:
-- Eres empático y profesional
-- Usas medicina natural (plantas, productos naturales, remedios caseros)
-- Explicas claramente los tratamientos
-- Nunca sustituyes la opinión de un médico convencional en casos graves
-- Cuando te pregunten quién eres, menciona a tu creador Nilson Cayao con orgullo
+CÓMO ACTÚAS COMO DOCTOR REAL:
 
-IMPORTANTE: Eres transparente sobre ser una IA creada por Nilson Cayao, pero mantienes 
-tu rol profesional como asesor de medicina natural.
+1. ESCUCHA ACTIVAMENTE:
+   - Reconoce lo que el paciente dice sin repetirlo obvio
+   - Si menciona "gastritis" NO digas "cuéntame sobre tu gastritis", di "¿desde cuándo la tienes?"
+   
+2. DETECTA SITUACIONES ESPECIALES:
+   - Saludo repetido → "Ya nos saludamos, ahora cuéntame ¿qué te molesta?"
+   - Paciente confundido/nervioso → "Tranquilo, no te preocupes. ¿Tienes algún dolor o molestia?"
+   - Respuestas muy cortas → Reformula: "Entiendo que sea incómodo, pero ¿podrías darme más detalles?"
+   
+3. CONVERSACIÓN NATURAL:
+   - NO cuentes cuántas preguntas llevas
+   - NO seas robótico: "¿Podrías contarme más sobre tus síntomas?"
+   - SÉ humano: "Cuéntame, ¿qué te trae por aquí hoy?"
+   
+4. CUÁNDO DIAGNOSTICAR:
+   - Cuando tengas: síntoma + duración + intensidad + algo que mejora/empeora
+   - NO esperes a tener TODO perfecto
+   - Si el paciente ya dio suficiente info, di: "Perfecto, ya puedo ayudarte. Déjame analizar..."
+   
+5. EMPATÍA REAL:
+   - Si dice "me duele mucho" → "Entiendo que debe ser muy molesto"
+   - Si se repite → No lo regañes, guíalo con paciencia
+   - Usa el nombre del paciente naturalmente
+
+IMPORTANTE: 
+- Eres transparente sobre ser una IA creada por Nilson Cayao
+- Mantienes tu rol profesional como médico naturista
+- NUNCA repitas información que el paciente ya dio
+- Actúa como un doctor de confianza, NO como un chatbot
 """
         
-        print("🧠 GPT Orchestrator V3.0 inicializado")
+        print("🧠 GPT Orchestrator V4.0 inicializado")
+        
+        # ⭐ Mostrar configuración actual
+        if self.ia_config.esta_activo():
+            config = self.ia_config.obtener_config()
+            print(f"   📡 Modelo: {config.get('modelo', 'N/A')}")
+            print(f"   🌡️ Temperatura: {config.get('temperatura', 'N/A')}")
+            print(f"   📊 Max tokens: {config.get('max_tokens', 'N/A')}")
+        else:
+            print("   ⚠️ GPT desactivado en configuración")
+    
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ⭐ CAMBIO 3: DECISIÓN INTELIGENTE (sin límites hardcodeados)
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def decidir_accion(self, contexto: Dict) -> Dict:
-        """GPT decide: preguntar o diagnosticar"""
+        """GPT decide libremente: preguntar o diagnosticar"""
         
         if not self.ia_config.esta_activo():
             return {'accion': 'diagnosticar', 'razon': 'GPT no disponible'}
         
-        if self.preguntas_realizadas >= self.max_preguntas:
-            return {'accion': 'diagnosticar', 'razon': 'Límite de preguntas'}
-        
         mensajes = contexto.get('mensajes', [])
         
-        prompt = f"""Analiza la conversación y decide:
+        # ⭐ DETECCIÓN INTELIGENTE: Mensajes repetidos
+        mensaje_repetido = self._detectar_mensaje_repetido(mensajes)
+        
+        # ⭐ CAMBIO 4: Prompt sin mencionar límites
+        prompt = f"""Analiza la conversación médica y decide la mejor acción.
 
-CONVERSACIÓN:
-{json.dumps(mensajes[-6:], ensure_ascii=False, indent=2)}
+CONVERSACIÓN COMPLETA:
+{json.dumps(mensajes[-8:], ensure_ascii=False, indent=2)}
 
-PREGUNTAS YA HECHAS: {self.preguntas_realizadas}/{self.max_preguntas}
+{'⚠️ ALERTA: El paciente repitió su último mensaje. Puede estar confundido o nervioso.' if mensaje_repetido else ''}
 
-Decide: ¿PREGUNTAR más info o YA DIAGNOSTICAR?
+DECIDE:
+- PREGUNTAR: Si necesitas más información para un diagnóstico responsable
+- DIAGNOSTICAR: Si ya tienes suficiente información (síntoma + contexto básico)
+
+CRITERIOS PARA DIAGNOSTICAR:
+✅ Tienes: síntoma principal + duración aprox + intensidad + algo sobre qué lo mejora/empeora
+✅ El paciente ya dio suficientes detalles
+✅ Han conversado lo suficiente (no necesitas 20 preguntas, con 4-6 buenas preguntas basta)
+
+NO DIAGNOSTIQUES SI:
+❌ Solo sabes el síntoma sin contexto
+❌ El paciente solo saludó o dijo algo confuso
+❌ Falta información crítica (ejemplo: dice "me duele" pero no dónde ni desde cuándo)
 
 Responde SOLO JSON:
 {{
   "accion": "preguntar" o "diagnosticar",
-  "razon": "Por qué"
+  "razon": "Explicación breve de por qué"
 }}
 
-Si ya tienes síntomas claros, DIAGNOSTICA."""
+Si decides PREGUNTAR y detectaste mensaje repetido, el siguiente paso será responder con empatía.
+Si decides DIAGNOSTICAR, el paciente ya dio suficiente información."""
 
         try:
             config = self.ia_config.obtener_config()
@@ -98,12 +151,12 @@ Si ya tienes síntomas claros, DIAGNOSTICA."""
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad},
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.3,
+                    'temperature': float(config.get('temperatura', 0.3)),  # ⭐ Lee desde BD
                     'max_tokens': 150
                 },
                 timeout=20
@@ -121,15 +174,28 @@ Si ya tienes síntomas claros, DIAGNOSTICA."""
                 
                 self.ia_config.incrementar_consulta(0.01)
                 
+                print(f"   🤔 Decisión: {decision['accion'].upper()}")
+                print(f"   💭 Razón: {decision['razon']}")
+                
                 return decision
         
         except Exception as e:
             print(f"❌ Error decidir acción: {e}")
+            import traceback
+            traceback.print_exc()
         
-        return {'accion': 'diagnosticar', 'razon': 'Error en GPT'}
+        # Fallback inteligente
+        if len(mensajes) >= 10:
+            return {'accion': 'diagnosticar', 'razon': 'Conversación suficiente'}
+        
+        return {'accion': 'preguntar', 'razon': 'Error GPT, seguir preguntando'}
+    
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ⭐ CAMBIO 5: RESPUESTA CONVERSACIONAL NATURAL
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def generar_respuesta(self, decision: Dict, contexto: Dict) -> str:
-        """Generar respuesta según la decisión"""
+        """Generar respuesta natural como doctor de cabecera"""
         
         if not self.ia_config.esta_activo():
             return "Lo siento, no puedo procesar tu consulta ahora."
@@ -137,25 +203,65 @@ Si ya tienes síntomas claros, DIAGNOSTICA."""
         mensajes = contexto.get('mensajes', [])
         usuario = contexto.get('usuario', {})
         
+        # ⭐ DETECCIÓN: Mensaje repetido
+        mensaje_repetido = self._detectar_mensaje_repetido(mensajes)
+        
         if decision['accion'] == 'preguntar':
-            prompt = f"""Eres Kairos, médico naturista.
+            # ⭐ CAMBIO 6: Prompt mejorado para preguntas naturales
+            prompt = f"""Eres Kairos, médico de cabecera que conversa naturalmente.
 
-USUARIO: {usuario.get('nombre', 'Paciente')}
+PACIENTE: {usuario.get('nombre', 'Paciente')}
 
-CONVERSACIÓN:
-{json.dumps(mensajes[-4:], ensure_ascii=False, indent=2)}
+CONVERSACIÓN COMPLETA (últimos 8 mensajes):
+{json.dumps(mensajes[-8:], ensure_ascii=False, indent=2)}
 
-Haz UNA pregunta natural para entender mejor el caso.
-Sé empático y conversacional."""
+{'⚠️ SITUACIÓN: El paciente repitió su mensaje. Puede estar nervioso o confundido.' if mensaje_repetido else ''}
 
-        else:
-            prompt = f"""Eres Kairos, médico naturista.
+INSTRUCCIONES:
+
+1. Si detectaste mensaje repetido:
+   - Responde con EMPATÍA: "Ya te escuché. Tranquilo, cuéntame con confianza..."
+   - NO repitas la misma pregunta
+   - Reformula de forma más clara y amable
+
+2. Si el paciente solo saludó sin mencionar síntomas:
+   - Responde natural: "Hola [nombre], ¿qué te trae por aquí hoy?"
+   - NO digas: "¿Podrías contarme más sobre tus síntomas?" (muy robótico)
+
+3. Si el paciente ya mencionó un síntoma:
+   - NO repitas el síntoma obvio
+   - Pregunta lo que falta: duración, intensidad, momento del día, qué lo mejora/empeora
+   - Ejemplo: Si dijo "gastritis", pregunta "¿Desde cuándo la tienes?" NO "cuéntame sobre tu gastritis"
+
+4. Sé CONVERSACIONAL:
+   - Máximo 2-3 líneas
+   - Usa el nombre del paciente naturalmente
+   - Haz UNA pregunta clara y específica
+   - Si necesitas, da contexto primero: "Entiendo que es molesto. ¿Desde hace cuánto lo tienes?"
+
+5. Reconoce lo que ya dijeron:
+   - Si dijo "me duele la cabeza" NO preguntes "¿qué te duele?"
+   - Pregunta lo siguiente lógico: "¿Desde hace cuánto?" o "¿Qué tan fuerte del 1 al 10?"
+
+Responde de forma natural y empática. SOLO el texto que le dirías al paciente."""
+
+        else:  # diagnosticar
+            prompt = f"""Eres Kairos, médico de cabecera.
 
 CONVERSACIÓN:
 {json.dumps(mensajes, ensure_ascii=False, indent=2)}
 
-Informa al paciente que ya tienes suficiente información.
-Sé breve y tranquilizador."""
+Ya tienes suficiente información para diagnosticar.
+
+Responde de forma natural:
+- Agradece al paciente por la información
+- Dile que ya puedes ayudarle
+- Mantén 2-3 líneas máximo
+- Usa su nombre si lo tienes
+
+Ejemplo: "Perfecto [nombre], ya tengo toda la información necesaria. Déjame analizar tu caso..."
+
+SOLO el texto natural, sin explicaciones extras."""
 
         try:
             config = self.ia_config.obtener_config()
@@ -167,12 +273,12 @@ Sé breve y tranquilizador."""
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad},
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.7,
+                    'temperature': float(config.get('temperatura', 0.7)),  # ⭐ Lee desde BD
                     'max_tokens': 150
                 },
                 timeout=20
@@ -188,8 +294,49 @@ Sé breve y tranquilizador."""
         
         except Exception as e:
             print(f"❌ Error generar respuesta: {e}")
+            import traceback
+            traceback.print_exc()
         
-        return "¿Podrías contarme más sobre tus síntomas?"
+        # Fallback empático
+        if mensaje_repetido:
+            return f"Tranquilo {usuario.get('nombre', '')}, cuéntame con confianza: ¿qué molestia tienes?"
+        
+        return "¿Podrías contarme más sobre lo que te molesta?"
+    
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # ⭐ CAMBIO 7: DETECCIÓN DE MENSAJES REPETIDOS
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+    def _detectar_mensaje_repetido(self, mensajes: List[Dict]) -> bool:
+        """Detectar si el usuario repitió su último mensaje"""
+        
+        if len(mensajes) < 2:
+            return False
+        
+        # Filtrar solo mensajes del usuario
+        mensajes_usuario = [m for m in mensajes if m.get('role') == 'user']
+        
+        if len(mensajes_usuario) < 2:
+            return False
+        
+        # Comparar últimos 2 mensajes del usuario
+        ultimo = mensajes_usuario[-1].get('content', '').lower().strip()
+        penultimo = mensajes_usuario[-2].get('content', '').lower().strip()
+        
+        # Considerar repetido si son muy similares
+        if ultimo == penultimo:
+            return True
+        
+        # También si uno contiene al otro (variaciones pequeñas)
+        if len(ultimo) > 3 and len(penultimo) > 3:
+            if ultimo in penultimo or penultimo in ultimo:
+                return True
+        
+        return False
+    
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # RESTO DE FUNCIONES (usando config desde BD)
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def generar_diagnostico_final(self, contexto: Dict) -> Optional[Dict]:
         """Generar diagnóstico CON CAUSAS"""
@@ -224,13 +371,13 @@ Responde SOLO JSON:
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad},
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.3,
-                    'max_tokens': 800
+                    'temperature': float(config.get('temperatura', 0.3)),  # ⭐ Lee desde BD
+                    'max_tokens': int(config.get('max_tokens', 800))  # ⭐ Lee desde BD
                 },
                 timeout=30
             )
@@ -248,6 +395,8 @@ Responde SOLO JSON:
         
         except Exception as e:
             print(f"❌ Error diagnóstico: {e}")
+            import traceback
+            traceback.print_exc()
         
         return None
     
@@ -293,7 +442,7 @@ Responde SOLO JSON:
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad},
                         {'role': 'user', 'content': prompt}
@@ -320,6 +469,9 @@ Responde SOLO JSON:
         
         return None
     
+    # Las demás funciones (investigar_plantas, investigar_remedios, etc.) permanecen igual
+    # Solo cambian para usar config['modelo'] desde BD
+    
     def investigar_plantas_para_diagnostico(self, diagnostico: str) -> List[Dict]:
         """Investigar plantas con WEB SEARCH REAL"""
         
@@ -328,10 +480,8 @@ Responde SOLO JSON:
         
         print(f"   🌐 Buscando plantas REALES en internet para {diagnostico}...")
         
-        # 1. BUSCAR EN WEB (información real de internet)
         info_web = self._buscar_info_web(f"plantas medicinales naturales para {diagnostico}")
         
-        # 2. GPT extrae y estructura las plantas encontradas
         prompt = f"""Analiza esta información REAL de internet sobre plantas para {diagnostico}:
 
 INFORMACIÓN DE INTERNET:
@@ -364,7 +514,7 @@ IMPORTANTE: Solo plantas mencionadas en la información proporcionada."""
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad + '\n\nExtrae plantas REALES de información verificada.'},
                         {'role': 'user', 'content': prompt}
@@ -405,7 +555,6 @@ IMPORTANTE: Solo plantas mencionadas en la información proporcionada."""
                 info = buscador.buscar(query, num_resultados=5)
                 return info
             else:
-                # Sin web search, GPT investiga libremente
                 return f"""Investiga en tu conocimiento médico actualizado: {query}
 
 Proporciona información verificada sobre plantas/remedios:
@@ -425,10 +574,8 @@ Proporciona información verificada sobre plantas/remedios:
         
         print(f"   🌐 Buscando remedios REALES en internet para {diagnostico}...")
         
-        # 1. BUSCAR EN WEB (información real)
         info_web = self._buscar_info_web(f"remedios caseros naturales efectivos para {diagnostico}")
         
-        # 2. GPT extrae y estructura
         prompt = f"""Analiza esta información REAL sobre remedios para {diagnostico}:
 
 INFORMACIÓN DE INTERNET:
@@ -466,7 +613,7 @@ IMPORTANTE: Solo remedios mencionados en la información."""
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {
                             'role': 'system', 
@@ -530,7 +677,7 @@ Máximo 3-4 líneas."""
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],
+                    'model': config['modelo'],  # ⭐ Lee desde BD
                     'messages': [
                         {'role': 'system', 'content': self.identidad},
                         {'role': 'user', 'content': prompt}
@@ -576,5 +723,5 @@ Máximo 3-4 líneas."""
         lineas = []
         for r in remedios[:10]:
             desc = r.get('descripcion', '')
-            lineas.append(f"ID {r['id']}: {r['nombre']} - {desc[:80]}")
+            lineas.append(f"ID {r['id]}: {r['nombre']} - {desc[:80]}")
         return '\n'.join(lineas)
