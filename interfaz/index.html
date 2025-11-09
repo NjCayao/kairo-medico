@@ -193,6 +193,13 @@
                         </svg>
                     </button>
                 </div>
+
+                <div id="boton-finalizar-container" style="display: none; margin-top: 15px; text-align: center;">
+                    <button onclick="finalizarConsulta()"
+                        style="background: #10b981; color: white; border: none; padding: 12px 40px; border-radius: 12px; font-size: 16px; cursor: pointer; font-weight: 600;">
+                        ✅ Finalizar Consulta
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -207,7 +214,7 @@
                     </svg>
                 </div>
                 <h2>Analizando tu caso</h2>
-                <p class="processing-text">Generando diagnóstico con IA...</p>
+                <p class="processing-text">Generando diagnóstico...</p>
 
                 <div class="progress-steps">
                     <div class="step active">
@@ -223,6 +230,98 @@
                         <span>Receta</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+
+        <div id="pantalla-receta" class="screen">
+            <div class="glass-card receta-card">
+                <!-- Header -->
+                <div class="receta-header">
+                    <div class="success-icon-small">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2>Tu Receta Personalizada</h2>
+                        <p id="receta-diagnostico">Diagnóstico</p>
+                    </div>
+                </div>
+
+                <!-- Contenido Receta -->
+                <div class="receta-contenido">
+                    <!-- Causas -->
+                    <div class="receta-seccion" id="seccion-causas" style="display: none;">
+                        <h3>🔍 ¿Por qué surge?</h3>
+                        <div id="lista-causas"></div>
+                    </div>
+
+                    <!-- Productos -->
+                    <div class="receta-seccion" id="seccion-productos">
+                        <h3>💊 Productos Naturales</h3>
+                        <div id="lista-productos"></div>
+                    </div>
+
+                    <!-- Plantas -->
+                    <div class="receta-seccion" id="seccion-plantas">
+                        <h3>🌿 Plantas Medicinales</h3>
+                        <div id="lista-plantas"></div>
+                    </div>
+
+                    <!-- Remedios -->
+                    <div class="receta-seccion" id="seccion-remedios">
+                        <h3>🍯 Remedios Caseros</h3>
+                        <div id="lista-remedios"></div>
+                    </div>
+                </div>
+
+                <!-- Chat de Dudas -->
+                <div class="dudas-chat">
+                    <div class="dudas-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                            <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        <span>¿Tienes dudas sobre tu tratamiento?</span>
+                    </div>
+
+                    <div class="dudas-mensajes" id="dudas-mensajes">
+                        <div class="duda-inicial">
+                            Puedes preguntar sobre:
+                            <ul>
+                                <li>¿Para qué sirve [producto]?</li>
+                                <li>¿Cómo preparo [planta]?</li>
+                                <li>¿Cuándo tomar [producto]?</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="dudas-input">
+                        <input type="text" id="duda-input" placeholder="Escribe tu duda..."
+                            onkeypress="if(event.key==='Enter') enviarDuda()">
+                        <button class="btn-icon btn-send" onclick="enviarDuda()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13" />
+                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Botón Continuar -->
+                <button class="btn-primary btn-grande" onclick="continuarAImpresion()">
+                    <span>Entendido, imprimir receta</span>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9" />
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                        <rect x="6" y="14" width="12" height="8" />
+                    </svg>
+                </button>
             </div>
         </div>
 

@@ -1,13 +1,13 @@
 """
-Motor de Diagnóstico de Kairos
-GPT como maestro - Sin hardcoding
+Motor de Diagnóstico de Kairos - VERSIÓN 2.0  
+Sistema integrado: Productos + Plantas + Remedios
+100% desde BD - GPT como maestro
 """
 
 import sys
 import os
 from typing import Dict, List, Optional
 import json
-import requests
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,475 +15,313 @@ sys.path.insert(0, BASE_DIR)
 
 from backend.database.database_manager import DatabaseManager
 from backend.database.productos_manager import ProductosManager
+from backend.database.plantas_medicinales_manager import PlantasMedicinalesManager
+from backend.database.remedios_caseros_manager import RemediosCaserosManager
 
 class DiagnosticoEngine:
-    """Motor de diagnóstico con GPT como maestro"""
+    """Motor de diagnóstico integrado completo"""
     
     def __init__(self):
         self.db = DatabaseManager()
         self.productos = ProductosManager()
-        self.config_ia = self._cargar_config_ia()
+        self.plantas = PlantasMedicinalesManager()
+        self.remedios = RemediosCaserosManager()
         
-        print("🧠 Motor de Diagnóstico inicializado")
-        if self.config_ia and self.config_ia.get('activo'):
-            print(f"   ✅ IA: {self.config_ia['proveedor']}")
-        else:
-            print("   ⚠️ IA no configurada")
+        print("🧠 Motor de Diagnóstico V2.0 inicializado")
     
-    def _cargar_config_ia(self) -> Optional[Dict]:
-        """Cargar config IA desde BD"""
-        try:
-            query = "SELECT * FROM configuracion_ia WHERE activo = TRUE LIMIT 1"
-            resultado = self.db.ejecutar_query(query)
-            return resultado[0] if resultado else None
-        except:
-            return None
-    
-    def analizar_completo(self, contexto: Dict, sesion_id: str = None, 
-                         usuario_id: int = None) -> Dict:
-        """Análisis completo: Diagnóstico + Receta"""
-        
-        sintoma = contexto.get('sintoma_principal', '').lower()
-        
-        print(f"\n{'='*60}")
-        print(f"🔍 ANALIZANDO: {sintoma}")
-        print(f"{'='*60}")
-        
-        # PASO 1: Obtener diagnóstico (3 capas)
-        diagnostico = self._obtener_diagnostico(sintoma, contexto, sesion_id, usuario_id)
-        
-        # PASO 2: Generar receta
-        print("\n📋 Generando receta...")
-        receta = self._generar_receta(diagnostico, contexto, usuario_id)
-        
-        resultado = {
-            **diagnostico,
-            'receta': receta,
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        print(f"\n{'='*60}")
-        print("✅ ANÁLISIS COMPLETO")
-        print(f"{'='*60}\n")
-        
-        return resultado
-    
-    def _obtener_diagnostico(self, sintoma: str, contexto: Dict,
-                            sesion_id: str = None, usuario_id: int = None) -> Dict:
-        """Sistema 3 capas: Local → IA → Fallback"""
-        
-        # CAPA 1: Buscar en conocimiento aprendido
-        print("\n📚 CAPA 1: Buscando conocimiento previo...")
-        diag_local = self._buscar_conocimiento(sintoma)
-        
-        if diag_local:
-            print("   ✅ Encontrado en conocimiento previo")
-            return diag_local
-        
-        print("   ⚠️ No encontrado")
-        
-        # CAPA 2: Consultar GPT
-        if self._puede_usar_ia():
-            print("\n🤖 CAPA 2: Consultando GPT...")
-            diag_ia = self._consultar_gpt(sintoma, contexto, sesion_id, usuario_id)
-            
-            if diag_ia:
-                print("   ✅ Diagnóstico de GPT recibido")
-                
-                # Guardar TODO para próximas consultas
-                if diag_ia.get('confianza', 0) >= 0.70:
-                    self._guardar_conocimiento_completo(sintoma, diag_ia)
-                
-                return diag_ia
-        
-        # CAPA 3: Fallback
-        print("\n⚠️ FALLBACK: Respuesta básica")
-        return self._fallback(sintoma)
-    
-    def _buscar_conocimiento(self, sintoma: str) -> Optional[Dict]:
-        """Buscar conocimiento completo aprendido de GPT"""
-        
-        query = """
-        SELECT * FROM conocimientos_completos 
-        WHERE LOWER(condicion) LIKE %s OR LOWER(sintomas_keywords) LIKE %s
-        ORDER BY veces_usado DESC
-        LIMIT 1
+    def generar_receta_completa(self, diagnostico_gpt: Dict, usuario_id: int = None) -> Dict:
         """
+        Generar receta completa desde diagnóstico GPT
         
-        busqueda = f"%{sintoma}%"
-        resultado = self.db.ejecutar_query(query, (busqueda, busqueda))
+        Args:
+            diagnostico_gpt: Resultado de GPT con IDs de productos/plantas/remedios
+            usuario_id: ID del usuario
+            
+        Returns:
+            Dict con receta completa formateada
+        """
+        print(f"\n{'='*70}")
+        print("📋 GENERANDO RECETA COMPLETA")
+        print(f"{'='*70}\n")
         
-        if not resultado:
-            return None
+        # PASO 1: Obtener productos por ID
+        productos_receta = []
+        for prod_id in diagnostico_gpt.get('productos_ids', []):
+            producto = self._obtener_producto_por_id(prod_id)
+            if producto:
+                productos_receta.append(producto)
+                self._incrementar_recomendacion_producto(prod_id)
+                print(f"   ✅ Producto: {producto['nombre']}")
         
-        c = resultado[0]
+        # PASO 2: Obtener plantas por ID
+        plantas_receta = []
+        for planta_id in diagnostico_gpt.get('plantas_ids', []):
+            planta = self.plantas.obtener_por_id(planta_id)
+            if planta:
+                plantas_receta.append(planta)
+                self.plantas.incrementar_uso(planta_id)
+                print(f"   ✅ Planta: {planta['nombre_comun']}")
         
-        # Incrementar uso
-        self.db.ejecutar_comando(
-            "UPDATE conocimientos_completos SET veces_usado = veces_usado + 1 WHERE id = %s",
-            (c['id'],)
+        # PASO 3: Obtener remedios por ID
+        remedios_receta = []
+        for remedio_id in diagnostico_gpt.get('remedios_ids', []):
+            remedio = self.remedios.obtener_por_id(remedio_id)
+            if remedio:
+                remedios_receta.append(remedio)
+                self.remedios.incrementar_uso(remedio_id)
+                print(f"   ✅ Remedio: {remedio['nombre']}")
+        
+        # PASO 4: Verificar combinaciones
+        print("\n   🔍 Verificando combinaciones...")
+        combinaciones = self._verificar_combinaciones_seguras(
+            productos_receta,
+            plantas_receta,
+            remedios_receta
         )
         
-        # Deserializar JSONs
-        return {
-            'condicion': c['condicion'],
-            'confianza': float(c['confianza']),
-            'causas': json.loads(c['causas_json']) if c['causas_json'] else [],
-            'tratamiento': json.loads(c['tratamiento_json']) if c['tratamiento_json'] else [],
-            'alimentos_aumentar': json.loads(c['alimentos_aumentar_json']) if c['alimentos_aumentar_json'] else [],
-            'alimentos_evitar': json.loads(c['alimentos_evitar_json']) if c['alimentos_evitar_json'] else [],
-            'habitos': json.loads(c['habitos_json']) if c['habitos_json'] else [],
-            'advertencias': json.loads(c['advertencias_json']) if c['advertencias_json'] else [],
-            'productos': self._buscar_productos(sintoma),
-            'origen': c['origen']
-        }
-    
-    def _puede_usar_ia(self) -> bool:
-        """Verificar si puede usar IA"""
-        if not self.config_ia or not self.config_ia.get('activo'):
-            return False
+        # PASO 5: Obtener info usuario
+        usuario = self._obtener_info_usuario(usuario_id)
         
-        api_key = self.config_ia.get('api_key', '')
-        if not api_key or api_key == 'TU_API_KEY_AQUI':
-            return False
-        
-        if self.config_ia.get('consultas_realizadas_hoy', 0) >= self.config_ia.get('limite_diario_consultas', 100):
-            return False
-        
-        return True
-    
-    def _consultar_gpt(self, sintoma: str, contexto: Dict, 
-                      sesion_id: str = None, usuario_id: int = None) -> Optional[Dict]:
-        """Consultar GPT-4"""
-        
-        respuestas = "\n".join([f"- {r}" for r in contexto.get('respuestas_usuario', [])])
-        
-        prompt = f"""Eres médico especialista en medicina natural.
-
-PACIENTE:
-Síntoma: {sintoma}
-Contexto:
-{respuestas}
-
-PRODUCTOS DISPONIBLES:
-- Moringa (antiinflamatorio, balance hormonal, energía)
-- Ganoderma Reishi (estrés, inmunidad, sueño)
-- Aceite Moringa (digestión, piel)
-
-RESPONDE SOLO JSON (sin markdown):
-{{
-    "condicion": "nombre exacto",
-    "confianza": 0.85,
-    "causas": ["causa1", "causa2", "causa3"],
-    "tratamiento": ["tratamiento1", "tratamiento2"],
-    "alimentos_aumentar": ["alimento1", "alimento2"],
-    "alimentos_evitar": ["alimento1", "alimento2"],
-    "habitos": ["hábito1 con emoji", "hábito2"],
-    "productos_naturales": ["moringa", "ganoderma"],
-    "cuando_ver_medico": "descripción breve"
-}}"""
-        
-        try:
-            response = requests.post(
-                'https://api.openai.com/v1/chat/completions',
-                headers={
-                    'Authorization': f"Bearer {self.config_ia['api_key']}",
-                    'Content-Type': 'application/json'
-                },
-                json={
-                    'model': self.config_ia.get('modelo_gpt', 'gpt-4'),
-                    'messages': [
-                        {'role': 'system', 'content': 'Médico natural. Solo JSON.'},
-                        {'role': 'user', 'content': prompt}
-                    ],
-                    'temperature': float(self.config_ia.get('temperatura', 0.3)),
-                    'max_tokens': self.config_ia.get('max_tokens', 1000)
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                contenido = data['choices'][0]['message']['content'].strip()
-                
-                # Limpiar markdown
-                contenido = contenido.replace('```json', '').replace('```', '').strip()
-                
-                diag = json.loads(contenido)
-                
-                # Mapear productos
-                diag['productos'] = self._mapear_productos(diag.get('productos_naturales', []))
-                
-                # Generar advertencias
-                diag['advertencias'] = self._generar_advertencias(diag)
-                
-                # Incrementar contador
-                self.db.ejecutar_comando(
-                    "UPDATE configuracion_ia SET consultas_realizadas_hoy = consultas_realizadas_hoy + 1"
-                )
-                
-                diag['origen'] = 'gpt'
-                return diag
-            
-            return None
-            
-        except Exception as e:
-            print(f"   ❌ Error GPT: {e}")
-            return None
-    
-    def _mapear_productos(self, productos_gpt: List[str]) -> List[Dict]:
-        """Mapear productos GPT a catálogo"""
-        productos = []
-        
-        for nombre in productos_gpt:
-            nombre_l = nombre.lower()
-            
-            if 'moringa' in nombre_l and 'aceite' not in nombre_l:
-                prod_id = 1
-            elif 'ganoderma' in nombre_l or 'reishi' in nombre_l:
-                prod_id = 2
-            elif 'aceite' in nombre_l:
-                prod_id = 3
-            else:
-                continue
-            
-            prod = self.productos.obtener_por_id(prod_id)
-            if prod:
-                productos.append({
-                    'id': prod['id'],
-                    'nombre': prod['nombre'],
-                    'precio': prod['precio'],
-                    'dosis': prod['dosis']
-                })
-        
-        return productos
-    
-    def _generar_advertencias(self, diag: Dict) -> List[str]:
-        """Generar advertencias según diagnóstico"""
-        adv = []
-        
-        if diag.get('confianza', 0) < 0.7:
-            adv.append("⚠️ Confianza baja - consultar médico")
-        
-        if diag.get('cuando_ver_medico'):
-            adv.append(f"📌 {diag['cuando_ver_medico']}")
-        
-        adv.append("📌 Productos naturales complementarios")
-        
-        if diag.get('productos'):
-            adv.append("📌 Seguir dosis recomendada")
-        
-        return adv
-    
-    def _guardar_conocimiento_completo(self, sintoma: str, diag: Dict):
-        """Guardar TODO lo que GPT respondió"""
-        
-        tema = diag.get('condicion', sintoma)
-        
-        # Verificar si existe
-        query = "SELECT id FROM conocimientos_completos WHERE LOWER(condicion) = LOWER(%s)"
-        existe = self.db.ejecutar_query(query, (tema,))
-        
-        if existe:
-            self.db.ejecutar_comando(
-                "UPDATE conocimientos_completos SET veces_usado = veces_usado + 1 WHERE id = %s",
-                (existe[0]['id'],)
-            )
-            print("   ✅ Conocimiento actualizado")
-        else:
-            query = """
-            INSERT INTO conocimientos_completos (
-                condicion, sintomas_keywords,
-                causas_json, tratamiento_json,
-                alimentos_aumentar_json, alimentos_evitar_json,
-                habitos_json, advertencias_json, cuando_ver_medico,
-                productos_recomendados_json, origen, confianza, veces_usado
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'gpt', %s, 1)
-            """
-            
-            parametros = (
-                tema,
-                sintoma,
-                json.dumps(diag.get('causas', []), ensure_ascii=False),
-                json.dumps(diag.get('tratamiento', []), ensure_ascii=False),
-                json.dumps(diag.get('alimentos_aumentar', []), ensure_ascii=False),
-                json.dumps(diag.get('alimentos_evitar', []), ensure_ascii=False),
-                json.dumps(diag.get('habitos', []), ensure_ascii=False),
-                json.dumps(diag.get('advertencias', []), ensure_ascii=False),
-                diag.get('cuando_ver_medico', ''),
-                json.dumps(diag.get('productos', []), ensure_ascii=False),
-                diag.get('confianza', 0.85)
-            )
-            
-            self.db.ejecutar_comando(query, parametros)
-            print("   💾 Conocimiento completo guardado")
-    
-    def _fallback(self, sintoma: str) -> Dict:
-        """Respuesta básica cuando todo falla"""
-        return {
-            'condicion': f'Molestia: {sintoma}',
-            'confianza': 0.5,
-            'causas': ['Requiere evaluación'],
-            'tratamiento': ['Consultar profesional'],
-            'alimentos_aumentar': ['Frutas', 'Verduras', 'Agua'],
-            'alimentos_evitar': ['Procesados', 'Azúcar'],
-            'habitos': ['💤 Dormir 8h', '🏃 Ejercicio', '💧 Hidratación'],
-            'advertencias': ['⚠️ Consultar médico profesional'],
-            'productos': self._buscar_productos(sintoma),
-            'origen': 'fallback'
-        }
-    
-    def _buscar_productos(self, sintoma: str) -> List[Dict]:
-        """Buscar productos por síntoma"""
-        productos_encontrados = self.productos.buscar_por_sintoma(sintoma)
-        
-        return [{
-            'id': p['id'],
-            'nombre': p['nombre'],
-            'precio': p['precio'],
-            'dosis': p['dosis']
-        } for p in productos_encontrados[:2]]
-    
-    def _generar_receta(self, diag: Dict, contexto: Dict, usuario_id: int = None) -> Dict:
-        """Generar receta completa"""
-        
-        # Obtener usuario
-        usuario = None
-        if usuario_id:
-            query = "SELECT * FROM usuarios WHERE id = %s"
-            resultado = self.db.ejecutar_query(query, (usuario_id,))
-            if resultado:
-                usuario = resultado[0]
-        
-        # Info botica
-        botica = self._info_botica()
-        
+        # PASO 6: Construir receta
         receta = {
             'fecha': datetime.now().strftime('%d/%m/%Y %H:%M'),
             'paciente': usuario['nombre'] if usuario else 'Paciente',
             'dni': usuario['dni'] if usuario else '',
-            'diagnostico': diag['condicion'],
-            'confianza': diag['confianza'],
-            'causas': diag.get('causas', [])[:3],
-            'tratamiento': diag.get('tratamiento', [])[:3],
-            'productos': diag.get('productos', []),
-            'total': sum(p['precio'] for p in diag.get('productos', [])),
-            'alimentos_aumentar': diag.get('alimentos_aumentar', [])[:4],
-            'alimentos_evitar': diag.get('alimentos_evitar', [])[:4],
-            'habitos': diag.get('habitos', [])[:4],
-            'advertencias': diag.get('advertencias', []),
-            'botica': botica
+            'diagnostico': diagnostico_gpt['condicion'],
+            'confianza': diagnostico_gpt['confianza'],
+            'causas': diagnostico_gpt.get('causas', []),
+            'productos': productos_receta,
+            'plantas': plantas_receta,
+            'remedios': remedios_receta,
+            'combinaciones': combinaciones,
+            'total': sum(float(p.get('precio', 0)) for p in productos_receta),
+            'alimentos_aumentar': diagnostico_gpt.get('alimentos_aumentar', []),
+            'alimentos_evitar': diagnostico_gpt.get('alimentos_evitar', []),
+            'habitos': diagnostico_gpt.get('habitos', []),
+            'advertencias': diagnostico_gpt.get('advertencias', []),
+            'origen': diagnostico_gpt.get('origen', 'gpt')
         }
         
+        # PASO 7: Formatear para ticket
         receta['texto_ticket'] = self._formatear_ticket(receta)
+        
+        print(f"\n{'='*70}")
+        print("✅ RECETA COMPLETA GENERADA")
+        print(f"{'='*70}\n")
         
         return receta
     
-    def _info_botica(self) -> Dict:
-        """Información botica"""
-        info = {
-            'nombre': 'Botica NaturaVida',
-            'direccion': 'Jr. Los Remedios 123',
-            'telefono': '(01) 234-5678',
-            'whatsapp': '987654321'
-        }
+    def _obtener_producto_por_id(self, prod_id: int) -> Optional[Dict]:
+        """Obtener producto directamente de BD por ID"""
+        query = "SELECT * FROM productos_naturales WHERE id = %s AND activo = TRUE"
+        resultado = self.db.ejecutar_query(query, (prod_id,))
         
-        try:
-            query = "SELECT * FROM configuracion_sistema WHERE clave LIKE '%botica%'"
-            resultado = self.db.ejecutar_query(query)
-            if resultado:
-                for c in resultado:
-                    clave = c['clave'].replace('_botica', '').replace('botica_', '')
-                    if clave in info:
-                        info[clave] = c['valor']
-        except:
-            pass
+        if resultado:
+            return resultado[0]
+        return None
+    
+    def _incrementar_recomendacion_producto(self, prod_id: int):
+        """Incrementar contador de recomendaciones del producto"""
+        query = """
+        UPDATE productos_naturales 
+        SET veces_recomendado = veces_recomendado + 1 
+        WHERE id = %s
+        """
+        self.db.ejecutar_comando(query, (prod_id,))
+    
+    def _verificar_combinaciones_seguras(self, productos: List[Dict],
+                                        plantas: List[Dict],
+                                        remedios: List[Dict]) -> List[Dict]:
+        """Verificar si las combinaciones son seguras"""
         
-        return info
+        combinaciones_encontradas = []
+        
+        # Verificar productos + plantas
+        for prod in productos:
+            for planta in plantas:
+                # Buscar en tabla combinaciones_recomendadas
+                query = """
+                SELECT * FROM combinaciones_recomendadas
+                WHERE activo = 1
+                  AND tipo_combinacion = 'producto_planta'
+                  AND (
+                      (item_1_tipo = 'producto' AND item_1_id = %s AND item_2_tipo = 'planta' AND item_2_id = %s)
+                      OR
+                      (item_1_tipo = 'planta' AND item_1_id = %s AND item_2_tipo = 'producto' AND item_2_id = %s)
+                  )
+                """
+                
+                resultado = self.db.ejecutar_query(query, (prod['id'], planta['id'], planta['id'], prod['id']))
+                
+                if resultado:
+                    combi = resultado[0]
+                    combinaciones_encontradas.append({
+                        'item1': prod['nombre'],
+                        'item2': planta['nombre_comun'],
+                        'sinergia': combi['sinergia'],
+                        'explicacion': combi['explicacion'],
+                        'instrucciones': combi['instrucciones']
+                    })
+                    
+                    print(f"      ✓ Combinación validada: {prod['nombre']} + {planta['nombre_comun']}")
+        
+        # Verificar plantas entre sí
+        for i in range(len(plantas)):
+            for j in range(i + 1, len(plantas)):
+                query = """
+                SELECT * FROM combinaciones_recomendadas
+                WHERE activo = 1
+                  AND tipo_combinacion = 'planta_planta'
+                  AND (
+                      (item_1_id = %s AND item_2_id = %s)
+                      OR
+                      (item_1_id = %s AND item_2_id = %s)
+                  )
+                """
+                
+                resultado = self.db.ejecutar_query(
+                    query,
+                    (plantas[i]['id'], plantas[j]['id'], plantas[j]['id'], plantas[i]['id'])
+                )
+                
+                if resultado:
+                    combi = resultado[0]
+                    combinaciones_encontradas.append({
+                        'item1': plantas[i]['nombre_comun'],
+                        'item2': plantas[j]['nombre_comun'],
+                        'sinergia': combi['sinergia'],
+                        'explicacion': combi['explicacion'],
+                        'instrucciones': combi['instrucciones']
+                    })
+        
+        return combinaciones_encontradas
+    
+    def _obtener_info_usuario(self, usuario_id: int) -> Optional[Dict]:
+        """Obtener info del usuario"""
+        
+        if not usuario_id:
+            return None
+        
+        query = "SELECT * FROM usuarios WHERE id = %s"
+        resultado = self.db.ejecutar_query(query, (usuario_id,))
+        
+        if resultado:
+            return resultado[0]
+        
+        return None
     
     def _formatear_ticket(self, receta: Dict) -> str:
-        """Formatear para ticket 58mm"""
+        """Formatear receta para ticket térmico 58mm (32 caracteres)"""
         
-        L = "=" * 32
+        L = 32
+        SEP = "=" * L
         
-        t = f"""
-{L}
-  KAIROS MEDICINA NATURAL
-{L}
+        ticket = f"""
+{SEP}
+  KAIROS INTELIGENCIA ARTIFICIAL
+  Diagnóstico y Receta Natural
+{SEP}
 
 {receta['fecha']}
-{receta['paciente'][:30]}
+{receta['paciente'][:L]}
 DNI: {receta['dni']}
 
-{L}
-DIAGNÓSTICO
-{L}
+{SEP}
+DIAGNOSTICO
+{SEP}
 
-{receta['diagnostico']}
+{receta['diagnostico'][:L]}
 Confianza: {receta['confianza']:.0%}
-
-{L}
-PRODUCTOS
-{L}
 """
         
-        for p in receta['productos']:
-            t += f"\n• {p['nombre'][:28]}\n"
-            t += f"  S/. {p['precio']:.2f}\n"
-            t += f"  {p['dosis'][:30]}\n"
-        
+        # PRODUCTOS
         if receta['productos']:
-            t += f"\n{L}\nTOTAL: S/. {receta['total']:.2f}\n"
+            ticket += f"\n{SEP}\nPRODUCTOS NATURALES\n{SEP}\n"
+            for prod in receta['productos']:
+                ticket += f"\n• {prod['nombre'][:L-2]}\n"
+                ticket += f"  S/. {float(prod['precio']):.2f}\n"
+                dosis = prod.get('dosis_recomendada', 'Ver etiqueta')
+                if dosis:
+                    ticket += f"  {str(dosis)[:L-2]}\n"
+            
+            ticket += f"\nTOTAL: S/. {receta['total']:.2f}\n"
         
-        t += f"\n{L}\nALIMENTACIÓN\n{L}\n\nAUMENTAR:\n"
-        for a in receta['alimentos_aumentar'][:3]:
-            t += f"• {a[:30]}\n"
+        # PLANTAS
+        if receta['plantas']:
+            ticket += f"\n{SEP}\nPLANTAS MEDICINALES\n{SEP}\n"
+            for planta in receta['plantas']:
+                ticket += f"\n• {planta['nombre_comun'][:L-2]}\n"
+                
+                # Preparación
+                formas = planta.get('formas_preparacion', [])
+                if formas and len(formas) > 0:
+                    forma = formas[0]
+                    tipo = forma.get('tipo', 'Infusión').title()
+                    ticket += f"  {tipo}\n"
+                
+                # Dosis
+                dosis = planta.get('dosis_recomendada', '3 tazas al día')
+                if dosis:
+                    ticket += f"  {str(dosis)[:L-2]}\n"
         
-        t += "\nEVITAR:\n"
-        for a in receta['alimentos_evitar'][:3]:
-            t += f"• {a[:30]}\n"
+        # REMEDIOS
+        if receta['remedios']:
+            ticket += f"\n{SEP}\nREMEDIOS CASEROS\n{SEP}\n"
+            for remedio in receta['remedios']:
+                ticket += f"\n• {remedio['nombre'][:L-2]}\n"
+                
+                # Ingredientes
+                ing_texto = remedio.get('ingredientes_texto', '')
+                if ing_texto:
+                    ticket += f"  Ing: {str(ing_texto)[:L-7]}\n"
+                
+                # Frecuencia
+                freq = remedio.get('frecuencia', '')
+                if freq:
+                    ticket += f"  {str(freq)[:L-2]}\n"
         
-        t += f"\n{L}\nHÁBITOS\n{L}\n\n"
-        for h in receta['habitos'][:4]:
-            t += f"{h[:32]}\n"
+        # COMBINACIONES
+        if receta['combinaciones']:
+            ticket += f"\n{SEP}\nCOMO COMBINAR\n{SEP}\n"
+            for combi in receta['combinaciones'][:2]:  # Max 2
+                ticket += f"\n✓ {combi['item1'][:12]} +\n"
+                ticket += f"  {combi['item2'][:12]}\n"
+                ticket += f"  {str(combi['instrucciones'])[:L-2]}\n"
         
-        t += f"\n{L}\nIMPORTANTE\n{L}\n\n"
-        for adv in receta['advertencias']:
-            t += f"{adv[:32]}\n"
+        # ALIMENTACIÓN
+        if receta['alimentos_aumentar']:
+            ticket += f"\n{SEP}\nALIMENTOS AUMENTAR\n{SEP}\n\n"
+            for alim in receta['alimentos_aumentar'][:4]:
+                ticket += f"• {str(alim)[:L-2]}\n"
         
-        t += f"\n{L}\nDÓNDE COMPRAR\n{L}\n\n"
-        t += f"{receta['botica']['nombre'][:32]}\n"
-        t += f"{receta['botica']['direccion'][:32]}\n"
-        t += f"Tel: {receta['botica']['telefono']}\n"
-        t += f"WhatsApp: {receta['botica']['whatsapp']}\n"
+        if receta['alimentos_evitar']:
+            ticket += f"\n{SEP}\nALIMENTOS EVITAR\n{SEP}\n\n"
+            for alim in receta['alimentos_evitar'][:4]:
+                ticket += f"• {str(alim)[:L-2]}\n"
         
-        t += f"\n{L}\n¡QUE TE MEJORES!\n{L}\n"
+        # HÁBITOS
+        if receta['habitos']:
+            ticket += f"\n{SEP}\nHABITOS RECOMENDADOS\n{SEP}\n\n"
+            for habito in receta['habitos'][:4]:
+                ticket += f"{str(habito)[:L]}\n"
         
-        return t
-
-# TEST
-if __name__ == "__main__":
-    print("="*70)
-    print("TEST MOTOR")
-    print("="*70)
-    
-    motor = DiagnosticoEngine()
-    
-    contexto = {
-        'sintoma_principal': 'dolor de cabeza',
-        'respuestas_usuario': [
-            'En la frente',
-            'Una semana',
-            '7 de 10',
-            'Mañanas',
-            'Mejora con descanso'
-        ]
-    }
-    
-    resultado = motor.analizar_completo(contexto, 'TEST-001', 1)
-    
-    print("\nDiagnóstico:", resultado['condicion'])
-    print("Confianza:", resultado['confianza'])
-    print("Origen:", resultado['origen'])
-    print("\n📋 RECETA:")
-    print(resultado['receta']['texto_ticket'])
+        # ADVERTENCIAS
+        # if receta['advertencias']:
+        #     ticket += f"\n{SEP}\nIMPORTANTE\n{SEP}\n\n"
+        #     for adv in receta['advertencias'][:3]:
+        #         # Dividir en líneas
+        #         palabras = str(adv).split()
+        #         linea = ""
+        #         for palabra in palabras:
+        #             if len(linea) + len(palabra) + 1 <= L:
+        #                 linea += palabra + " "
+        #             else:
+        #                 ticket += linea.strip() + "\n"
+        #                 linea = palabra + " "
+        #         if linea:
+        #             ticket += linea.strip() + "\n"
+        #         ticket += "\n"
+        
+        ticket += f"{SEP}\n¡QUE TE MEJORES!\n{SEP}\n"
+        
+        return ticket

@@ -15,7 +15,7 @@ Acceder: http://localhost/kairos-medico/interfaz/
 # acceder al admin 
 /kairos-medico/frontend/admin/
 
-Credenciales:
+Credenciales: 
 Usuario: admin
 Contraseña: kairos2024
 

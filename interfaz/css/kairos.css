@@ -952,3 +952,172 @@ p {
     object-fit: cover;
     filter: drop-shadow(0 8px 24px rgba(102, 126, 234, 0.6));
 }
+
+
+
+.receta-card {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.receta-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.success-icon-small svg {
+    stroke: var(--color-primary);
+}
+
+.receta-contenido {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.receta-seccion {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.receta-seccion h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--color-text);
+}
+
+.producto-item, .planta-item, .remedio-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.producto-item h4, .planta-item h4, .remedio-item h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--color-primary);
+}
+
+.producto-item p, .planta-item p, .remedio-item p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    opacity: 0.9;
+    margin: 0.25rem 0;
+}
+
+.dudas-chat {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.dudas-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 500;
+}
+
+.dudas-mensajes {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.duda-inicial {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.duda-inicial ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 0.5rem;
+}
+
+.duda-inicial li {
+    padding: 0.25rem 0;
+    opacity: 0.7;
+}
+
+.duda-pregunta {
+    background: rgba(109, 40, 217, 0.2);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.duda-respuesta {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.dudas-input {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dudas-input input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.btn-grande {
+    width: 100%;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+}
+
+
+#boton-finalizar-container {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, #f9fafb, transparent);
+  padding: 20px;
+  text-align: center;
+}
+
+#boton-finalizar-container button {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 15px 50px;
+  font-size: 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+}
+
+#boton-finalizar-container button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+#boton-finalizar-container button:active {
+  transform: translateY(0);
+}

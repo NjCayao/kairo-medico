@@ -1,5 +1,5 @@
 /**
- * Cliente API de Kairos
+ * Cliente API de Kairos - ACTUALIZADO
  * Maneja todas las peticiones al backend
  */
 
@@ -84,6 +84,28 @@ class KairosAPI {
         };
         
         return await this.request(KairosConfig.API.MENSAJE, 'POST', data);
+    }
+
+    /**
+     * ⭐ NUEVO: Generar diagnóstico
+     */
+    async generarDiagnostico() {
+        const data = {
+            sesion_id: this.sesionId
+        };
+        
+        return await this.request('/api/sesion/diagnostico', 'POST', data);
+    }
+
+    /**
+     * ⭐ NUEVO: Imprimir receta
+     */
+    async imprimirReceta() {
+        const data = {
+            sesion_id: this.sesionId
+        };
+        
+        return await this.request('/api/sesion/imprimir', 'POST', data);
     }
 
     /**

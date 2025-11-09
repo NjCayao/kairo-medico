@@ -294,53 +294,62 @@ class DatabaseManager:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     def guardar_consulta(self, datos: Dict) -> int:
-        """
-        Guardar consulta médica completa
-        
-        Args:
-            datos: Diccionario con todos los datos de la consulta
+        """Guardar consulta médica completa"""
+        try:
+            query = """
+            INSERT INTO consultas_medicas 
+            (usuario_id, sesion_id, sintoma_principal, diagnostico_kairos, 
+            confianza_diagnostico, causas_probables, productos_recomendados_json, 
+            mensajes_conversacion, receta_completa, remedios_caseros, 
+            consejos_dieta, consejos_habitos, duracion_minutos, canal, modo_operacion, 
+            fecha_consulta, estado)
+            VALUES 
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), 'completada')
+            """
             
-        Returns:
-            int: ID de la consulta creada
-        """
-        query = """
-        INSERT INTO consultas_medicas (
-            usuario_id, sesion_id, sintoma_principal, sintomas_adicionales,
-            diagnostico_kairos, confianza_diagnostico, causas_probables,
-            productos_recomendados_json, receta_completa, remedios_caseros,
-            consejos_dieta, consejos_habitos, mensajes_conversacion,
-            fecha_consulta, duracion_minutos, canal, modo_operacion, estado
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 
-            NOW(), %s, %s, %s, 'completada'
-        )
-        """
-        
-        parametros = (
-            datos['usuario_id'],
-            datos['sesion_id'],
-            datos['sintoma_principal'],
-            datos.get('sintomas_adicionales', ''),
-            datos['diagnostico'],
-            datos.get('confianza', 0.85),
-            datos.get('causas', ''),
-            json.dumps(datos['productos'], ensure_ascii=False),
-            datos['receta_completa'],
-            datos.get('remedios_caseros', ''),
-            datos.get('consejos_dieta', ''),
-            datos.get('consejos_habitos', ''),
-            json.dumps(datos.get('conversacion', []), ensure_ascii=False),
-            datos.get('duracion_minutos', 0),
-            datos.get('canal', 'feria'),
-            datos.get('modo', 'feria')
-        )
-        
-        if self.ejecutar_comando(query, parametros):
-            consulta_id = self.obtener_ultimo_id()
-            print(f"✅ Consulta guardada (ID: {consulta_id})")
+            import json
+            
+            # Productos como JSON
+            productos_json = json.dumps(datos.get('productos', []))
+            
+            # Consejos como texto
+            consejos_dieta = '\n'.join(datos.get('consejos_dieta', [])) if 'consejos_dieta' in datos else None
+            consejos_habitos = '\n'.join(datos.get('consejos_habitos', [])) if 'consejos_habitos' in datos else None
+            
+            params = (
+                datos['usuario_id'],
+                datos.get('sesion_id'),
+                datos.get('sintoma_principal', ''),
+                datos.get('diagnostico', ''),
+                datos.get('confianza', 0.85),
+                datos.get('causas', ''),
+                productos_json,
+                datos.get('mensajes_conversacion', '[]'),  # JSON de conversación completa
+                datos.get('receta_completa', ''),
+                datos.get('remedios_caseros', ''),
+                consejos_dieta,
+                consejos_habitos,
+                datos.get('duracion_minutos', 0),
+                datos.get('canal', 'feria'),
+                datos.get('modo', 'feria')
+            )
+            
+            cursor = self.conexion.cursor()
+            cursor.execute(query, params)
+            self.conexion.commit()
+            
+            consulta_id = cursor.lastrowid
+            cursor.close()
+            
+            print(f"✅ Consulta guardada en BD (ID: {consulta_id})")
+            
             return consulta_id
         
-        return 0
+        except Exception as e:
+            print(f"❌ Error guardando consulta: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
     
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     # FUNCIONES ESPECÍFICAS - IMPRESIONES
