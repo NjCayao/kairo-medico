@@ -244,13 +244,27 @@ class KairosApp {
 
         // ⭐ DETECCIÓN AUTOMÁTICA: Verificar si está listo para diagnosticar
         if (res.listo_diagnostico) {
-          console.log("🎯 Diagnóstico listo - generando automáticamente...");
+          // ⭐ VALIDAR QUE HAY CONTENIDO SUFICIENTE
+          const mensajesUsuario = this.mensajes.filter(m => m.role === 'user');
+          const contenidoTotal = mensajesUsuario.map(m => m.content).join(' ').trim();
+          
+          console.log(`📊 Validando contenido:`);
+          console.log(`   Mensajes usuario: ${mensajesUsuario.length}`);
+          console.log(`   Caracteres totales: ${contenidoTotal.length}`);
+          console.log(`   Contenido: "${contenidoTotal.substring(0, 50)}..."`);
+          
+          // Requiere al menos 15 caracteres de contenido real
+          if (contenidoTotal.length >= 15) {
+            console.log("✅ Contenido suficiente - generando diagnóstico...");
+            
+            // Esperar 1.5 segundos para que usuario vea mensaje
+            await this.esperar(1500);
 
-          // Esperar 1.5 segundos para que usuario vea mensaje
-          await this.esperar(1500);
-
-          // Generar diagnóstico automáticamente
-          await this.generarDiagnosticoAutomatico();
+            // Generar diagnóstico automáticamente
+            await this.generarDiagnosticoAutomatico();
+          } else {
+            console.log("⚠️ Contenido insuficiente, continuando conversación...");
+          }
         }
       }
     } catch (error) {
@@ -282,7 +296,10 @@ class KairosApp {
 
     try {
       // Llamar API para generar diagnóstico
+      console.log("📡 Llamando a API para generar diagnóstico...");
       const result = await api.generarDiagnostico();
+      
+      console.log("📥 Respuesta completa del backend:", result);
 
       if (result.success) {
         const diagnostico = result.diagnostico;
@@ -302,10 +319,12 @@ class KairosApp {
         // ⭐ MOSTRAR RECETA CON CHAT (NO CERRAR)
         await this.mostrarRecetaConChat();
       } else {
+        console.error("❌ Backend respondió con error:", result.error);
         throw new Error(result.error || "Error generando diagnóstico");
       }
     } catch (error) {
       console.error("❌ Error diagnóstico:", error);
+      console.error("❌ Stack:", error.stack);
       this.mostrarError("Error generando diagnóstico: " + error.message);
     }
   }

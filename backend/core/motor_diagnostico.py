@@ -41,70 +41,111 @@ class MotorDiagnosticoV3:
         print("🧠 GENERANDO DIAGNÓSTICO COMPLETO")
         print(f"{'='*70}\n")
         
-        # 1. Diagnóstico GPT
-        diagnostico_gpt = self.gpt.generar_diagnostico_final(contexto)
+        mensajes = contexto.get('mensajes', [])
+        print(f"📋 Contexto recibido: {mensajes}")
         
-        if not diagnostico_gpt:
-            return False, {'error': 'No se pudo generar diagnóstico'}
+        # ⭐ VALIDAR QUE HAYA CONTENIDO SUFICIENTE
+        mensajes_usuario = [m for m in mensajes if m.get('role') == 'user']
+        if len(mensajes_usuario) < 1:
+            print("❌ No hay mensajes de usuario")
+            return False, {'error': 'No hay información suficiente para diagnóstico'}
         
-        print(f"   ✅ Diagnóstico GPT recibido: {diagnostico_gpt['diagnostico']}")
+        # Verificar que haya más que saludos
+        contenido_total = ' '.join([m.get('content', '') for m in mensajes_usuario])
+        if len(contenido_total.strip()) < 10:
+            print(f"❌ Contenido muy corto: '{contenido_total}'")
+            return False, {'error': 'Información insuficiente para diagnóstico'}
         
-        # 2. Generar receta
-        receta = self.gpt.generar_receta_completa(
-            diagnostico_gpt['diagnostico'],
-            contexto
-        )
+        print(f"✅ Contenido suficiente: {len(mensajes_usuario)} mensajes, {len(contenido_total)} caracteres")
         
-        if not receta:
-            return False, {'error': 'No se pudo generar receta'}
-        
-        # 3. Obtener detalles de productos
-        productos_detalle = self._obtener_productos_detalle(receta.get('productos', []))
-        
-        # 4. Obtener/Investigar plantas
-        plantas_detalle = self._obtener_o_investigar_plantas(
-            diagnostico_gpt['diagnostico'],
-            receta.get('plantas', [])
-        )
-        
-        # 5. Obtener/Investigar remedios
-        remedios_detalle = self._obtener_o_investigar_remedios(
-            diagnostico_gpt['diagnostico'],
-            receta.get('remedios', [])
-        )
-        
-        # 6. Calcular tiempo de mejoría
-        tiempo_mejoria = self._calcular_tiempo_mejoria(productos_detalle)
-        
-        # 7. Construir resultado completo
-        resultado = {
-            'diagnostico': diagnostico_gpt['diagnostico'],
-            'confianza': diagnostico_gpt.get('confianza', 0.85),
-            'causas': diagnostico_gpt.get('causas', []),
-            'explicacion_causas': diagnostico_gpt.get('explicacion_causas', ''),
-            'productos': productos_detalle,
-            'plantas': plantas_detalle,
-            'remedios': remedios_detalle,
-            'consejos_dieta': diagnostico_gpt.get('consejos_dieta', []),
-            'consejos_habitos': diagnostico_gpt.get('consejos_habitos', []),
-            'tiempo_mejoria': tiempo_mejoria,
-            'advertencias': diagnostico_gpt.get('advertencias', []),
-            'cuando_ver_medico': diagnostico_gpt.get('cuando_ver_medico', '')
-        }
-        
-        # 8. Guardar conocimiento
-        self._guardar_conocimiento_completo(contexto, resultado)
-        
-        # 9. Guardar combinación
-        self._guardar_combinacion_recomendada(resultado)
-        
-        print(f"\n✅ Diagnóstico completo generado")
-        print(f"   Productos: {len(productos_detalle)}")
-        print(f"   Plantas: {len(plantas_detalle)}")
-        print(f"   Remedios: {len(remedios_detalle)}")
-        print(f"   Tiempo mejoría: {tiempo_mejoria}\n")
-        
-        return True, resultado
+        try:
+            # 1. Diagnóstico GPT
+            print("🤖 Paso 1: Llamando a GPT para diagnóstico...")
+            diagnostico_gpt = self.gpt.generar_diagnostico_final(contexto)
+            
+            if not diagnostico_gpt:
+                print("❌ GPT no devolvió diagnóstico")
+                return False, {'error': 'GPT no pudo generar diagnóstico'}
+            
+            print(f"✅ Diagnóstico GPT recibido: {diagnostico_gpt.get('diagnostico', 'N/A')}")
+            
+            # 2. Generar receta
+            print("📝 Paso 2: Generando receta...")
+            receta = self.gpt.generar_receta_completa(
+                diagnostico_gpt['diagnostico'],
+                contexto
+            )
+            
+            if not receta:
+                print("❌ GPT no devolvió receta")
+                return False, {'error': 'No se pudo generar receta'}
+            
+            print(f"✅ Receta generada: {receta}")
+            
+            # 3. Obtener detalles de productos
+            print("📦 Paso 3: Obteniendo productos...")
+            productos_detalle = self._obtener_productos_detalle(receta.get('productos', []))
+            print(f"✅ Productos: {len(productos_detalle)}")
+            
+            # 4. Obtener/Investigar plantas
+            print("🌿 Paso 4: Obteniendo plantas...")
+            plantas_detalle = self._obtener_o_investigar_plantas(
+                diagnostico_gpt['diagnostico'],
+                receta.get('plantas', [])
+            )
+            print(f"✅ Plantas: {len(plantas_detalle)}")
+            
+            # 5. Obtener/Investigar remedios
+            print("🍯 Paso 5: Obteniendo remedios...")
+            remedios_detalle = self._obtener_o_investigar_remedios(
+                diagnostico_gpt['diagnostico'],
+                receta.get('remedios', [])
+            )
+            print(f"✅ Remedios: {len(remedios_detalle)}")
+            
+            # 6. Calcular tiempo de mejoría
+            print("⏱️ Paso 6: Calculando tiempo de mejoría...")
+            tiempo_mejoria = self._calcular_tiempo_mejoria(productos_detalle)
+            
+            # 7. Construir resultado completo
+            resultado = {
+                'diagnostico': diagnostico_gpt['diagnostico'],
+                'confianza': diagnostico_gpt.get('confianza', 0.85),
+                'causas': diagnostico_gpt.get('causas', []),
+                'explicacion_causas': diagnostico_gpt.get('explicacion_causas', ''),
+                'productos': productos_detalle,
+                'plantas': plantas_detalle,
+                'remedios': remedios_detalle,
+                'consejos_dieta': diagnostico_gpt.get('consejos_dieta', []),
+                'consejos_habitos': diagnostico_gpt.get('consejos_habitos', []),
+                'tiempo_mejoria': tiempo_mejoria,
+                'advertencias': diagnostico_gpt.get('advertencias', []),
+                'cuando_ver_medico': diagnostico_gpt.get('cuando_ver_medico', '')
+            }
+            
+            # 8. Guardar conocimiento
+            print("💾 Paso 7: Guardando conocimiento...")
+            self._guardar_conocimiento_completo(contexto, resultado)
+            
+            # 9. Guardar combinación
+            print("🔗 Paso 8: Guardando combinación...")
+            self._guardar_combinacion_recomendada(resultado)
+            
+            print(f"\n✅ Diagnóstico completo generado exitosamente")
+            print(f"   Productos: {len(productos_detalle)}")
+            print(f"   Plantas: {len(plantas_detalle)}")
+            print(f"   Remedios: {len(remedios_detalle)}")
+            print(f"   Tiempo mejoría: {tiempo_mejoria}\n")
+            
+            return True, resultado
+            
+        except Exception as e:
+            print(f"\n❌ ERROR GENERANDO DIAGNÓSTICO:")
+            print(f"   Tipo: {type(e).__name__}")
+            print(f"   Mensaje: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False, {'error': f'Error: {str(e)}'}
     
     def _obtener_productos_detalle(self, ids: List[int]) -> List[Dict]:
         """Obtener detalles completos de productos"""
