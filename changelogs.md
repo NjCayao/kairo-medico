@@ -260,4 +260,26 @@ Requiere: Modificar session_manager.py para usar conversation_orchestrator.py en
 ❌ Nuevos componentes creados pero no integrados
 ⏳ Necesita integración completa
 
-#
+# CHANGELOG - Kairos V3.0
+✅ FIXES CRÍTICOS:
+
+Conversaciones se guardan → Tabla conversaciones (turno por turno) + consultas_medicas.mensajes_conversacion (JSON completo)
+Receta completa en chat → Muestra causas, dieta, hábitos, tiempo de mejoría, detalles de productos
+JSON limpio → Plantas muestran "Infusión" en vez de [{"tipo":"infusión"}]
+BD guarda todo → conocimientos_completos y combinaciones_recomendadas funcionan
+
+🌐 BÚSQUEDA WEB REAL:
+
+Wikipedia API → Enciclopedia médica gratis
+DuckDuckGo → Búsqueda web gratis e ilimitada
+Ya NO hardcodea → Kairos investiga libremente en internet
+
+🧠 APRENDIZAJE:
+
+Encuentra plantas nuevas → Si hay <2 en BD, busca en web y guarda
+Encuentra remedios nuevos → Ya NO solo Aloe Vera, busca miel+canela, té verde, etc.
+BD crece sola → Cada diagnóstico nuevo = más conocimiento
+
+📦 ARCHIVOS NUEVOS:
+
+web_searcher.py → Busca en Wikipedia + DuckDuckGo

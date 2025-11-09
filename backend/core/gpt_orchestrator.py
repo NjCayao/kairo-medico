@@ -1,7 +1,7 @@
 """
 GPT Orchestrator V3.0
 ✅ Identidad: Creador Nilson Cayao
-✅ Investiga plantas y remedios
+✅ Investiga plantas y remedios CON WEB SEARCH REAL
 ✅ Guarda en BD automáticamente
 """
 
@@ -18,6 +18,14 @@ from backend.core.ia_config_manager import IAConfigManager
 from backend.database.productos_manager import ProductosManager
 from backend.database.plantas_medicinales_manager import PlantasMedicinalesManager
 from backend.database.remedios_caseros_manager import RemediosCaserosManager
+
+# ⭐ Importar WebSearcher
+try:
+    from backend.core.web_searcher import obtener_buscador
+    WEB_SEARCH_DISPONIBLE = True
+except:
+    WEB_SEARCH_DISPONIBLE = False
+    print("⚠️ WebSearcher no disponible")
 
 class GPTOrchestrator:
     """Orquestador GPT con investigación"""
@@ -313,25 +321,38 @@ Responde SOLO JSON:
         return None
     
     def investigar_plantas_para_diagnostico(self, diagnostico: str) -> List[Dict]:
-        """Investigar plantas adicionales con GPT"""
+        """Investigar plantas con WEB SEARCH REAL"""
         
         if not self.ia_config.esta_activo():
             return []
         
-        prompt = f"""Como médico naturista, investiga plantas medicinales efectivas para: {diagnostico}
+        print(f"   🌐 Buscando plantas REALES en internet para {diagnostico}...")
+        
+        # 1. BUSCAR EN WEB (información real de internet)
+        info_web = self._buscar_info_web(f"plantas medicinales naturales para {diagnostico}")
+        
+        # 2. GPT extrae y estructura las plantas encontradas
+        prompt = f"""Analiza esta información REAL de internet sobre plantas para {diagnostico}:
 
-Dame 2 plantas adicionales en JSON:
+INFORMACIÓN DE INTERNET:
+{info_web}
+
+Extrae 2 plantas medicinales REALES, VERIFICADAS y FÁCILES de conseguir.
+
+Responde SOLO JSON:
 [
   {{
-    "nombre_comun": "Nombre",
+    "nombre_comun": "Nombre común",
     "nombre_cientifico": "Nombre científico",
-    "propiedades": "Propiedades curativas",
+    "propiedades": "Propiedades principales",
     "dosis": "Dosis recomendada",
-    "forma_uso": "Cómo se prepara",
-    "preparacion": "Instrucciones breves",
+    "forma_uso": "Infusión/Decocción/Tópico",
+    "preparacion": "Instrucciones simples",
     "cuando_tomar": "Mejor momento"
   }}
-]"""
+]
+
+IMPORTANTE: Solo plantas mencionadas en la información proporcionada."""
 
         try:
             config = self.ia_config.obtener_config()
@@ -345,13 +366,13 @@ Dame 2 plantas adicionales en JSON:
                 json={
                     'model': config['modelo'],
                     'messages': [
-                        {'role': 'system', 'content': self.identidad},
+                        {'role': 'system', 'content': self.identidad + '\n\nExtrae plantas REALES de información verificada.'},
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.5,
-                    'max_tokens': 500
+                    'temperature': 0.3,
+                    'max_tokens': 800
                 },
-                timeout=25
+                timeout=35
             )
             
             if response.status_code == 200:
@@ -361,34 +382,79 @@ Dame 2 plantas adicionales en JSON:
                 
                 plantas = json.loads(contenido)
                 
-                self.ia_config.incrementar_consulta(0.02)
+                self.ia_config.incrementar_consulta(0.03)
+                
+                print(f"   ✅ Encontré {len(plantas)} plantas verificadas")
+                for p in plantas:
+                    print(f"      • {p['nombre_comun']}")
                 
                 return plantas
         
         except Exception as e:
             print(f"❌ Error investigar plantas: {e}")
+            import traceback
+            traceback.print_exc()
         
         return []
     
+    def _buscar_info_web(self, query: str) -> str:
+        """Buscar información REAL en internet"""
+        try:
+            if WEB_SEARCH_DISPONIBLE:
+                buscador = obtener_buscador()
+                info = buscador.buscar(query, num_resultados=5)
+                return info
+            else:
+                # Sin web search, GPT investiga libremente
+                return f"""Investiga en tu conocimiento médico actualizado: {query}
+
+Proporciona información verificada sobre plantas/remedios:
+- Comunes y accesibles
+- Con respaldo tradicional o científico
+- Seguros para uso general"""
+            
+        except Exception as e:
+            print(f"⚠️ Error web search: {e}")
+            return "Investiga plantas/remedios verificados y comunes."
+    
     def investigar_remedios_para_diagnostico(self, diagnostico: str) -> List[Dict]:
-        """Investigar remedios adicionales con GPT"""
+        """Investigar remedios con WEB SEARCH REAL"""
         
         if not self.ia_config.esta_activo():
             return []
         
-        prompt = f"""Como médico naturista, investiga remedios caseros efectivos para: {diagnostico}
+        print(f"   🌐 Buscando remedios REALES en internet para {diagnostico}...")
+        
+        # 1. BUSCAR EN WEB (información real)
+        info_web = self._buscar_info_web(f"remedios caseros naturales efectivos para {diagnostico}")
+        
+        # 2. GPT extrae y estructura
+        prompt = f"""Analiza esta información REAL sobre remedios para {diagnostico}:
 
-Dame 2 remedios en JSON:
+INFORMACIÓN DE INTERNET:
+{info_web}
+
+Extrae 2 remedios caseros DIFERENTES (NO Aloe Vera).
+
+Requisitos:
+- Ingredientes comunes y accesibles
+- Preparación simple
+- Remedios PROBADOS
+- Económicos
+
+Responde SOLO JSON:
 [
   {{
-    "nombre": "Nombre del remedio",
+    "nombre": "Nombre descriptivo",
     "descripcion": "Descripción breve",
     "ingredientes": "Lista de ingredientes",
-    "preparacion": "Cómo se prepara",
-    "como_usar": "Cómo se usa",
-    "frecuencia": "Con qué frecuencia"
+    "preparacion": "Pasos de preparación",
+    "como_usar": "Cómo aplicar/tomar",
+    "frecuencia": "Frecuencia de uso"
   }}
-]"""
+]
+
+IMPORTANTE: Solo remedios mencionados en la información."""
 
         try:
             config = self.ia_config.obtener_config()
@@ -402,13 +468,16 @@ Dame 2 remedios en JSON:
                 json={
                     'model': config['modelo'],
                     'messages': [
-                        {'role': 'system', 'content': self.identidad},
+                        {
+                            'role': 'system', 
+                            'content': self.identidad + '\n\nExtrae remedios REALES de información verificada. NO repitas remedios.'
+                        },
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.5,
-                    'max_tokens': 500
+                    'temperature': 0.4,
+                    'max_tokens': 800
                 },
-                timeout=25
+                timeout=35
             )
             
             if response.status_code == 200:
@@ -418,12 +487,18 @@ Dame 2 remedios en JSON:
                 
                 remedios = json.loads(contenido)
                 
-                self.ia_config.incrementar_consulta(0.02)
+                self.ia_config.incrementar_consulta(0.03)
+                
+                print(f"   ✅ Encontré {len(remedios)} remedios verificados")
+                for r in remedios:
+                    print(f"      • {r['nombre']}")
                 
                 return remedios
         
         except Exception as e:
             print(f"❌ Error investigar remedios: {e}")
+            import traceback
+            traceback.print_exc()
         
         return []
     

@@ -324,7 +324,7 @@ class DatabaseManager:
                 datos.get('confianza', 0.85),
                 datos.get('causas', ''),
                 productos_json,
-                datos.get('mensajes_conversacion', '[]'),  # JSON de conversación completa
+                datos.get('mensajes_conversacion', '[]'),  # ⭐ JSON de conversación completa
                 datos.get('receta_completa', ''),
                 datos.get('remedios_caseros', ''),
                 consejos_dieta,

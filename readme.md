@@ -1,4 +1,5 @@
 pip install unidecode --break-system-packages
+pip install wikipedia-api duckduckgo-search
 
 # para el servidor ubunto es 
 start_api.sh
