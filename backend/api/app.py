@@ -105,24 +105,31 @@ def procesar_mensaje():
     
     try:
         data = request.json
-        sesion_id = data.get('sesion_id')  # ⭐ CORREGIDO: Agregar sesion_id
+        sesion_id = data.get('sesion_id')
         mensaje = data.get('mensaje')
         
-        # ⭐ VERIFICAR SESIÓN
         if sesion_id not in sessions:
             return jsonify({'success': False, 'error': 'Sesión no encontrada'}), 404
         
-        # ⭐ OBTENER MANAGER
         manager = sessions[sesion_id]
         
         # Procesar mensaje
         resultado = manager.procesar_mensaje(mensaje)
         
-        # ⭐ LIMPIAR RESPUESTA (solo texto, sin metadatos)
-        if isinstance(resultado.get('respuesta'), dict):
-            # Si es objeto, extraer solo el content
-            resultado['respuesta'] = resultado['respuesta'].get('content', str(resultado['respuesta']))
+        # ⭐ CAMBIO: Si ya incluye diagnóstico, NO llamar nuevamente
+        if resultado.get('tipo') == 'diagnostico_completo':
+            # Ya viene con todo, devolver directo
+            return jsonify({
+                'success': True,
+                'resultado': {
+                    'respuesta': resultado['respuesta'],
+                    'tipo': resultado['tipo'],
+                    'listo_diagnostico': True,
+                    'diagnostico': resultado['diagnostico']  # ⭐ Ya está incluido
+                }
+            })
         
+        # ⭐ Flujo normal (preguntando)
         return jsonify({
             'success': True,
             'resultado': resultado

@@ -88,12 +88,50 @@ class SessionManager:
             'timestamp': datetime.now().isoformat()
         })
         
+        # ⭐ Si ya hay diagnóstico, es chat post-diagnóstico
         if self.diagnostico_actual:
             return self._procesar_duda_post_diagnostico(mensaje_usuario)
         
         contexto = {'mensajes': self.mensajes_conversacion, 'usuario': self.usuario_data}
         
         decision = self.orchestrator.decidir_accion(contexto)
+        
+        # ⭐ CAMBIO CRÍTICO: Si GPT decide diagnosticar, generar INMEDIATAMENTE
+        if decision['accion'] == 'diagnosticar':
+            # 1. Respuesta de transición
+            respuesta_transicion = self.orchestrator.generar_respuesta(decision, contexto)
+            
+            self.mensajes_conversacion.append({
+                'role': 'assistant',
+                'content': respuesta_transicion,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            # Guardar mensaje de transición
+            self._guardar_mensaje_conversacion(mensaje_usuario, respuesta_transicion, 'diagnosticando')
+            
+            # 2. Generar diagnóstico INMEDIATAMENTE
+            print("\n🧠 Generando diagnóstico automáticamente...")
+            exito, diagnostico = self.generar_diagnostico_y_receta()
+            
+            if exito:
+                # 3. Devolver TODO junto
+                return {
+                    'respuesta': respuesta_transicion,
+                    'tipo': 'diagnostico_completo',
+                    'listo_diagnostico': True,
+                    'diagnostico': diagnostico,  # ⭐ Incluir el diagnóstico completo
+                    'preguntas_realizadas': self.orchestrator.preguntas_realizadas
+                }
+            else:
+                return {
+                    'respuesta': 'Lo siento, hubo un error generando tu diagnóstico. ¿Podrías darme más detalles?',
+                    'tipo': 'error',
+                    'listo_diagnostico': False,
+                    'error': diagnostico.get('error', 'Error desconocido')
+                }
+        
+        # ⭐ Si no es diagnosticar, flujo normal (preguntar)
         respuesta = self.orchestrator.generar_respuesta(decision, contexto)
         
         self.mensajes_conversacion.append({
@@ -102,13 +140,13 @@ class SessionManager:
             'timestamp': datetime.now().isoformat()
         })
         
-        # ⭐ Guardar en tabla conversaciones (mensaje por mensaje)
+        # Guardar en BD
         self._guardar_mensaje_conversacion(mensaje_usuario, respuesta, decision.get('accion', ''))
         
         return {
             'respuesta': respuesta,
             'tipo': decision['accion'],
-            'listo_diagnostico': decision['accion'] == 'diagnosticar',
+            'listo_diagnostico': False,
             'preguntas_realizadas': self.orchestrator.preguntas_realizadas
         }
     

@@ -30,43 +30,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $datos = [
             'api_key' => trim($_POST['api_key'] ?? ''),
-            'modelo' => trim($_POST['modelo'] ?? 'gpt-4'),
+            'modelo_gpt' => trim($_POST['modelo'] ?? 'gpt-4o-mini'),  
             'temperatura' => floatval($_POST['temperatura'] ?? 0.7),
             'max_tokens' => intval($_POST['max_tokens'] ?? 1000),
             'activo' => isset($_POST['activo']) ? 1 : 0,
-            'consultas_por_dia' => intval($_POST['consultas_por_dia'] ?? 100),
-            'costo_maximo_dia' => floatval($_POST['costo_maximo_dia'] ?? 10.0)
+            'limite_diario_consultas' => intval($_POST['consultas_por_dia'] ?? 100),  
+            'presupuesto_mensual' => floatval($_POST['costo_maximo_dia'] ?? 10.0)  
         ];
 
         if ($config_ia) {
             // Actualizar
             $stmt = $db->prepare("UPDATE configuracion_ia SET 
-                api_key = ?, modelo = ?, temperatura = ?, max_tokens = ?,
-                activo = ?, consultas_por_dia = ?, costo_maximo_dia = ?
+                api_key = ?, 
+                modelo_gpt = ?,
+                temperatura = ?, 
+                max_tokens = ?,
+                activo = ?, 
+                limite_diario_consultas = ?, 
+                presupuesto_mensual = ?
                 WHERE id = ?");
+            
             $stmt->execute([
                 $datos['api_key'],
-                $datos['modelo'],
+                $datos['modelo_gpt'],
                 $datos['temperatura'],
                 $datos['max_tokens'],
                 $datos['activo'],
-                $datos['consultas_por_dia'],
-                $datos['costo_maximo_dia'],
+                $datos['limite_diario_consultas'],
+                $datos['presupuesto_mensual'],
                 $config_ia['id']
             ]);
         } else {
             // Insertar
             $stmt = $db->prepare("INSERT INTO configuracion_ia 
-                (api_key, modelo, temperatura, max_tokens, activo, consultas_por_dia, costo_maximo_dia)
-                VALUES (?, ?, ?, ?, ?, ?, ?)");
+                (proveedor, api_key, modelo_gpt, temperatura, max_tokens, activo, limite_diario_consultas, presupuesto_mensual)
+                VALUES ('openai', ?, ?, ?, ?, ?, ?, ?)");
+            
             $stmt->execute([
                 $datos['api_key'],
-                $datos['modelo'],
+                $datos['modelo_gpt'],
                 $datos['temperatura'],
                 $datos['max_tokens'],
                 $datos['activo'],
-                $datos['consultas_por_dia'],
-                $datos['costo_maximo_dia']
+                $datos['limite_diario_consultas'],
+                $datos['presupuesto_mensual']
             ]);
         }
 
@@ -138,19 +145,19 @@ require_once BASE_PATH . '/includes/sidebar.php';
                             <div class="form-group">
                                 <label>Modelo</label>
                                 <select class="form-control" name="modelo">
-                                    <option value="gpt-4o-mini" <?= ($config_ia['modelo'] ?? '') == 'gpt-4o-mini' ? 'selected' : '' ?>>
-                                        GPT-4o Mini (Recomendado - Económico y rápido)
+                                    <option value="gpt-4o-mini" <?= ($config_ia['modelo_gpt'] ?? 'gpt-4o-mini') == 'gpt-4o-mini' ? 'selected' : '' ?>>
+                                        GPT-4o Mini (Recomendado - Económico y rápido) ⭐
                                     </option>
-                                    <option value="gpt-4o" <?= ($config_ia['modelo'] ?? '') == 'gpt-4o' ? 'selected' : '' ?>>
+                                    <option value="gpt-4o" <?= ($config_ia['modelo_gpt'] ?? '') == 'gpt-4o' ? 'selected' : '' ?>>
                                         GPT-4o (Más completo)
                                     </option>
-                                    <option value="gpt-4-turbo" <?= ($config_ia['modelo'] ?? '') == 'gpt-4-turbo' ? 'selected' : '' ?>>
+                                    <option value="gpt-4-turbo" <?= ($config_ia['modelo_gpt'] ?? '') == 'gpt-4-turbo' ? 'selected' : '' ?>>
                                         GPT-4 Turbo
                                     </option>
-                                    <option value="gpt-4" <?= ($config_ia['modelo'] ?? '') == 'gpt-4' ? 'selected' : '' ?>>
+                                    <option value="gpt-4" <?= ($config_ia['modelo_gpt'] ?? '') == 'gpt-4' ? 'selected' : '' ?>>
                                         GPT-4 (Más preciso pero caro)
                                     </option>
-                                    <option value="gpt-3.5-turbo" <?= ($config_ia['modelo'] ?? '') == 'gpt-3.5-turbo' ? 'selected' : '' ?>>
+                                    <option value="gpt-3.5-turbo" <?= ($config_ia['modelo_gpt'] ?? '') == 'gpt-3.5-turbo' ? 'selected' : '' ?>>
                                         GPT-3.5 Turbo (Antiguo)
                                     </option>
                                 </select>
@@ -203,16 +210,17 @@ require_once BASE_PATH . '/includes/sidebar.php';
                                     <div class="form-group">
                                         <label>Consultas Máximas por Día</label>
                                         <input type="number" class="form-control" name="consultas_por_dia"
-                                            value="<?= $config_ia['consultas_por_dia'] ?? 100 ?>">
+                                            value="<?= $config_ia['limite_diario_consultas'] ?? 100 ?>">
                                     </div>
                                 </div>
 
-                                <!-- Costo máximo -->
+                                <!-- Presupuesto mensual -->
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Costo Máximo por Día ($)</label>
+                                        <label>Presupuesto Mensual (S/.)</label>
                                         <input type="number" step="0.01" class="form-control"
-                                            name="costo_maximo_dia" value="<?= $config_ia['costo_maximo_dia'] ?? 10.0 ?>">
+                                            name="costo_maximo_dia" value="<?= $config_ia['presupuesto_mensual'] ?? 50.0 ?>">
+                                        <small class="text-muted">En soles peruanos</small>
                                     </div>
                                 </div>
                             </div>
@@ -223,12 +231,39 @@ require_once BASE_PATH . '/includes/sidebar.php';
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> Guardar Configuración
                             </button>
+                            
+                            <a href="<?= BASE_URL ?>dashboard.php" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
                         </div>
                     </form>
                 </div>
             </div>
 
             <div class="col-md-4">
+                <div class="card card-success">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-lightbulb"></i> Estado Actual
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($config_ia): ?>
+                            <p><strong>Modelo:</strong> <?= $config_ia['modelo_gpt'] ?? 'No configurado' ?></p>
+                            <p><strong>Estado:</strong> 
+                                <span class="badge badge-<?= $config_ia['activo'] ? 'success' : 'danger' ?>">
+                                    <?= $config_ia['activo'] ? 'Activo' : 'Inactivo' ?>
+                                </span>
+                            </p>
+                            <p><strong>Temperatura:</strong> <?= $config_ia['temperatura'] ?? 0.7 ?></p>
+                            <p><strong>Consultas hoy:</strong> <?= $config_ia['consultas_realizadas_hoy'] ?? 0 ?> / <?= $config_ia['limite_diario_consultas'] ?? 100 ?></p>
+                            <p><strong>Gasto mes:</strong> S/. <?= number_format($config_ia['gasto_mes_actual'] ?? 0, 2) ?> / S/. <?= number_format($config_ia['presupuesto_mensual'] ?? 50, 2) ?></p>
+                        <?php else: ?>
+                            <p class="text-warning">No hay configuración guardada</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <div class="card card-warning">
                     <div class="card-header">
                         <h3 class="card-title">
@@ -248,12 +283,12 @@ require_once BASE_PATH . '/includes/sidebar.php';
                             <li><strong>GPT-4o Mini:</strong> ~$0.001 (MÁS ECONÓMICO) ⭐</li>
                             <li>GPT-4o: ~$0.005</li>
                             <li>GPT-4 Turbo: ~$0.01</li>
-                            <li>GPT-4: ~$0.03</li>
+                            <li>GPT-4: ~$0.03 (30x más caro)</li>
                             <li>GPT-3.5: ~$0.002</li>
                         </ul>
                         <p class="text-muted">
                             <small>
-                                <strong>Nota:</strong> GPT-4o Mini es 30 veces más barato que GPT-4 y suficientemente bueno para diagnósticos.
+                                <strong>Nota:</strong> GPT-4o Mini es 30 veces más barato que GPT-4 y suficientemente bueno para diagnósticos médicos.
                             </small>
                         </p>
                     </div>
@@ -271,13 +306,28 @@ require_once BASE_PATH . '/includes/sidebar.php';
                             "SELECT 
                                 COUNT(*) as consultas,
                                 SUM(costo_estimado) as costo_total
-                            FROM consultas_medicas
-                            WHERE DATE(fecha) = CURDATE() AND uso_gpt = TRUE"
+                            FROM log_consultas_ia
+                            WHERE DATE(fecha_consulta) = CURDATE()"
                         )[0] ?? ['consultas' => 0, 'costo_total' => 0];
                         ?>
                         <p><strong>Hoy:</strong></p>
-                        <p>Consultas: <?= $uso_hoy['consultas'] ?></p>
+                        <p>Consultas: <?= $uso_hoy['consultas'] ?? 0 ?></p>
                         <p>Costo: $<?= number_format($uso_hoy['costo_total'] ?? 0, 4) ?></p>
+                        
+                        <?php
+                        $uso_mes = $db_instance->query(
+                            "SELECT 
+                                COUNT(*) as consultas,
+                                SUM(costo_estimado) as costo_total
+                            FROM log_consultas_ia
+                            WHERE MONTH(fecha_consulta) = MONTH(CURDATE())
+                            AND YEAR(fecha_consulta) = YEAR(CURDATE())"
+                        )[0] ?? ['consultas' => 0, 'costo_total' => 0];
+                        ?>
+                        <hr>
+                        <p><strong>Este mes:</strong></p>
+                        <p>Consultas: <?= $uso_mes['consultas'] ?? 0 ?></p>
+                        <p>Costo: $<?= number_format($uso_mes['costo_total'] ?? 0, 2) ?></p>
                     </div>
                 </div>
             </div>

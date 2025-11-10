@@ -195,40 +195,29 @@ class KairosApp {
 
     if (!mensaje) return;
 
-    // Agregar mensaje del usuario
     this.agregarMensajeUsuario(mensaje);
     input.value = "";
 
-    // Mostrar indicador "escribiendo"
     document.getElementById("escribiendo").style.display = "flex";
 
     try {
       const result = await api.enviarMensaje(mensaje);
 
-      // Ocultar indicador
       document.getElementById("escribiendo").style.display = "none";
 
       if (result.success) {
         const res = result.resultado;
 
-        // Agregar respuesta de Kairos
+        // Agregar respuesta
         this.agregarMensajeKairos(res.respuesta);
 
-        // ⭐ LIMPIAR TEXTO PARA VOZ (sin JSON, timestamps)
+        // Voz limpia
         if (voz && voz.vozActiva) {
-          let textoLimpio = res.respuesta;
-
-          // Si es objeto con content
-          if (typeof res.respuesta === "object" && res.respuesta.content) {
-            textoLimpio = res.respuesta.content;
-          }
-
-          // Limpiar cualquier JSON residual
-          textoLimpio = String(textoLimpio)
-            .replace(/\{[^}]*"timestamp"[^}]*\}/gi, "") // Quitar objetos con timestamp
-            .replace(/\{[^}]*"role"[^}]*\}/gi, "") // Quitar objetos con role
-            .replace(/timestamp.*$/gim, "") // Quitar líneas con timestamp
-            .replace(/\{[^}]*\}/g, "") // Quitar cualquier JSON
+          let textoLimpio = String(res.respuesta)
+            .replace(/\{[^}]*"timestamp"[^}]*\}/gi, "")
+            .replace(/\{[^}]*"role"[^}]*\}/gi, "")
+            .replace(/timestamp.*$/gim, "")
+            .replace(/\{[^}]*\}/g, "")
             .trim();
 
           if (textoLimpio) {
@@ -236,35 +225,20 @@ class KairosApp {
           }
         }
 
-        // ⭐ Si ya hay diagnóstico, es chat post-diagnóstico
-        if (this.diagnosticoActual && res.tipo === 'respuesta_duda') {
-          console.log("💬 Chat post-diagnóstico activo");
-          return; // Solo agregar mensaje y hablar, no hacer nada más
+        // ⭐ NUEVO: Si viene con diagnóstico completo, mostrarlo
+        if (res.tipo === "diagnostico_completo" && res.diagnostico) {
+          console.log("✅ Diagnóstico recibido inmediatamente");
+          this.diagnosticoActual = res.diagnostico;
+
+          await this.esperar(1500);
+          await this.mostrarRecetaConChat();
+          return;
         }
 
-        // ⭐ DETECCIÓN AUTOMÁTICA: Verificar si está listo para diagnosticar
-        if (res.listo_diagnostico) {
-          // ⭐ VALIDAR QUE HAY CONTENIDO SUFICIENTE
-          const mensajesUsuario = this.mensajes.filter(m => m.role === 'user');
-          const contenidoTotal = mensajesUsuario.map(m => m.content).join(' ').trim();
-          
-          console.log(`📊 Validando contenido:`);
-          console.log(`   Mensajes usuario: ${mensajesUsuario.length}`);
-          console.log(`   Caracteres totales: ${contenidoTotal.length}`);
-          console.log(`   Contenido: "${contenidoTotal.substring(0, 50)}..."`);
-          
-          // Requiere al menos 15 caracteres de contenido real
-          if (contenidoTotal.length >= 15) {
-            console.log("✅ Contenido suficiente - generando diagnóstico...");
-            
-            // Esperar 1.5 segundos para que usuario vea mensaje
-            await this.esperar(1500);
-
-            // Generar diagnóstico automáticamente
-            await this.generarDiagnosticoAutomatico();
-          } else {
-            console.log("⚠️ Contenido insuficiente, continuando conversación...");
-          }
+        // Chat post-diagnóstico
+        if (this.diagnosticoActual && res.tipo === "respuesta_duda") {
+          console.log("💬 Chat post-diagnóstico activo");
+          return;
         }
       }
     } catch (error) {
@@ -298,7 +272,7 @@ class KairosApp {
       // Llamar API para generar diagnóstico
       console.log("📡 Llamando a API para generar diagnóstico...");
       const result = await api.generarDiagnostico();
-      
+
       console.log("📥 Respuesta completa del backend:", result);
 
       if (result.success) {
@@ -338,66 +312,74 @@ class KairosApp {
     this.cambiarPantalla("chat");
 
     const diagnostico = this.diagnosticoActual;
-    
+
     let mensajeReceta = `✅ DIAGNÓSTICO: ${diagnostico.diagnostico}\n`;
-    mensajeReceta += `Confianza: ${Math.round(diagnostico.confianza * 100)}%\n\n`;
-    
+    mensajeReceta += `Confianza: ${Math.round(
+      diagnostico.confianza * 100
+    )}%\n\n`;
+
     if (diagnostico.causas && diagnostico.causas.length > 0) {
       mensajeReceta += "🔍 CAUSAS PROBABLES:\n";
-      diagnostico.causas.forEach(causa => mensajeReceta += `• ${causa}\n`);
+      diagnostico.causas.forEach((causa) => (mensajeReceta += `• ${causa}\n`));
       mensajeReceta += "\n";
     }
-    
+
     if (diagnostico.explicacion_causas) {
       mensajeReceta += `💡 POR QUÉ SURGE:\n${diagnostico.explicacion_causas}\n\n`;
     }
-    
+
     if (diagnostico.productos && diagnostico.productos.length > 0) {
       mensajeReceta += "📦 PRODUCTOS NATURALES:\n";
-      diagnostico.productos.forEach(p => {
+      diagnostico.productos.forEach((p) => {
         mensajeReceta += `• ${p.nombre} - S/.${p.precio}\n`;
-        mensajeReceta += `  Dosis: ${p.dosis || 'Ver etiqueta'}\n`;
-        mensajeReceta += `  Cuándo: ${p.cuando_tomar || 'Con alimentos'}\n`;
-        mensajeReceta += `  Duración: ${p.duracion || '1 mes'}\n\n`;
+        mensajeReceta += `  Dosis: ${p.dosis || "Ver etiqueta"}\n`;
+        mensajeReceta += `  Cuándo: ${p.cuando_tomar || "Con alimentos"}\n`;
+        mensajeReceta += `  Duración: ${p.duracion || "1 mes"}\n\n`;
       });
     }
 
     if (diagnostico.plantas && diagnostico.plantas.length > 0) {
       mensajeReceta += "🌿 PLANTAS MEDICINALES:\n";
-      diagnostico.plantas.forEach(p => {
+      diagnostico.plantas.forEach((p) => {
         mensajeReceta += `• ${p.nombre_comun}\n`;
-        mensajeReceta += `  Forma: ${p.forma_uso || 'Infusión'}\n`;
-        mensajeReceta += `  Dosis: ${p.dosis || '1-3 tazas'}\n\n`;
+        mensajeReceta += `  Forma: ${p.forma_uso || "Infusión"}\n`;
+        mensajeReceta += `  Dosis: ${p.dosis || "1-3 tazas"}\n\n`;
       });
     }
 
     if (diagnostico.remedios && diagnostico.remedios.length > 0) {
       mensajeReceta += "🍯 REMEDIOS CASEROS:\n";
-      diagnostico.remedios.forEach(r => {
+      diagnostico.remedios.forEach((r) => {
         mensajeReceta += `• ${r.nombre}\n`;
-        if (r.ingredientes) mensajeReceta += `  Ingredientes: ${r.ingredientes}\n`;
+        if (r.ingredientes)
+          mensajeReceta += `  Ingredientes: ${r.ingredientes}\n`;
         if (r.preparacion) mensajeReceta += `  Preparación: ${r.preparacion}\n`;
         if (r.como_usar) mensajeReceta += `  Uso: ${r.como_usar}\n`;
         mensajeReceta += "\n";
       });
     }
-    
+
     if (diagnostico.consejos_dieta && diagnostico.consejos_dieta.length > 0) {
       mensajeReceta += "🥗 DIETA:\n";
-      diagnostico.consejos_dieta.forEach(c => mensajeReceta += `• ${c}\n`);
+      diagnostico.consejos_dieta.forEach((c) => (mensajeReceta += `• ${c}\n`));
       mensajeReceta += "\n";
     }
-    
-    if (diagnostico.consejos_habitos && diagnostico.consejos_habitos.length > 0) {
+
+    if (
+      diagnostico.consejos_habitos &&
+      diagnostico.consejos_habitos.length > 0
+    ) {
       mensajeReceta += "💪 HÁBITOS:\n";
-      diagnostico.consejos_habitos.forEach(c => mensajeReceta += `• ${c}\n`);
+      diagnostico.consejos_habitos.forEach(
+        (c) => (mensajeReceta += `• ${c}\n`)
+      );
       mensajeReceta += "\n";
     }
-    
+
     if (diagnostico.tiempo_mejoria) {
       mensajeReceta += `⏱️ TIEMPO ESTIMADO:\n${diagnostico.tiempo_mejoria}\n\n`;
     }
-    
+
     mensajeReceta += "💬 ¿Preguntas?";
 
     this.agregarMensajeKairos(mensajeReceta);
@@ -428,7 +410,11 @@ class KairosApp {
 
       if (result.success) {
         console.log("✅ Sesión finalizada");
-        console.log("   Duración:", result.resumen?.duracion_minutos || 0, "min");
+        console.log(
+          "   Duración:",
+          result.resumen?.duracion_minutos || 0,
+          "min"
+        );
       }
     } catch (error) {
       console.error("❌ Error finalizando:", error);

@@ -1,11 +1,12 @@
 """
-GPT Orchestrator V4.0 - 100% CONVERSACIONAL + CONFIGURACIÓN DINÁMICA
+GPT Orchestrator V4.1 - ANÁLISIS DE COMPOSICIÓN + CONFIGURACIÓN DINÁMICA
 ✅ Identidad: Creador Nilson Cayao
 ✅ Sin límites hardcodeados de preguntas
 ✅ Detecta mensajes repetidos y confusión
 ✅ Lee configuración desde panel admin (modelo, temperatura, etc.)
 ✅ Investiga plantas y remedios CON WEB SEARCH REAL
 ✅ Guarda en BD automáticamente
+✅ Analiza composición de productos para recomendar el más efectivo
 """
 
 import sys
@@ -48,43 +49,42 @@ class GPTOrchestrator:
 Eres Kairos, un médico de cabecera especializado en medicina natural y holística.
 
 TU CREADOR: Nilson Cayao, un joven peruano apasionado por la tecnología y la medicina natural.
-Nilson desarrolló Kairos con inteligencia artificial para ayudar a las personas a encontrar 
-soluciones naturales a sus problemas de salud.
 
 CÓMO ACTÚAS COMO DOCTOR REAL:
 
 1. ESCUCHA ACTIVAMENTE:
    - Reconoce lo que el paciente dice sin repetirlo obvio
-   - Si menciona "gastritis" NO digas "cuéntame sobre tu gastritis", di "¿desde cuándo la tienes?"
+   - Si menciona "insomnio" NO preguntes "¿qué te molesta?", di "¿desde cuándo?"
    
 2. DETECTA SITUACIONES ESPECIALES:
-   - Saludo repetido → "Ya nos saludamos, ahora cuéntame ¿qué te molesta?"
-   - Paciente confundido/nervioso → "Tranquilo, no te preocupes. ¿Tienes algún dolor o molestia?"
-   - Respuestas muy cortas → Reformula: "Entiendo que sea incómodo, pero ¿podrías darme más detalles?"
+   - Si el paciente repite lo mismo 2 veces → ACEPTA que no tiene más info y diagnostica
+   - Si dice "solo eso" o "nada más" → NO insistas, tienes suficiente información
+   - Paciente confundido/nervioso → "Tranquilo, con lo que me dijiste puedo ayudarte"
    
 3. CONVERSACIÓN NATURAL:
-   - NO cuentes cuántas preguntas llevas
-   - NO seas robótico: "¿Podrías contarme más sobre tus síntomas?"
-   - SÉ humano: "Cuéntame, ¿qué te trae por aquí hoy?"
+   - Máximo 3-4 preguntas para casos simples (insomnio, dolor de cabeza)
+   - NO seas insistente si el paciente ya respondió
+   - Si el paciente dice "solo X" 2 veces → diagnostica
    
 4. CUÁNDO DIAGNOSTICAR:
-   - Cuando tengas: síntoma + duración + intensidad + algo que mejora/empeora
-   - NO esperes a tener TODO perfecto
-   - Si el paciente ya dio suficiente info, di: "Perfecto, ya puedo ayudarte. Déjame analizar..."
+   - Casos SIMPLES (insomnio, dolor de cabeza, cansancio): 2-3 preguntas son suficientes
+   - Casos COMPLEJOS (dolor fuerte, múltiples síntomas): 4-6 preguntas
+   - Si el paciente se repite → ya tienes suficiente info
    
 5. EMPATÍA REAL:
    - Si dice "me duele mucho" → "Entiendo que debe ser muy molesto"
-   - Si se repite → No lo regañes, guíalo con paciencia
+   - Si se repite → "Perfecto, con eso puedo ayudarte. Déjame analizar..."
    - Usa el nombre del paciente naturalmente
 
 IMPORTANTE: 
 - Eres transparente sobre ser una IA creada por Nilson Cayao
 - Mantienes tu rol profesional como médico naturista
 - NUNCA repitas información que el paciente ya dio
-- Actúa como un doctor de confianza, NO como un chatbot
+- Si el paciente dice "solo eso" o "nada más" → DIAGNOSTICA
+- No seas insistente si ya tienes: síntoma + duración aproximada
 """
         
-        print("🧠 GPT Orchestrator V4.0 inicializado")
+        print("🧠 GPT Orchestrator V4.1 inicializado")
         
         # ⭐ Mostrar configuración actual
         if self.ia_config.esta_activo():
@@ -401,7 +401,7 @@ Responde SOLO JSON:
         return None
     
     def generar_receta_completa(self, diagnostico: str, contexto: Dict) -> Optional[Dict]:
-        """Generar receta"""
+        """Generar receta CON ANÁLISIS DE COMPOSICIÓN"""
         
         if not self.ia_config.esta_activo():
             return None
@@ -410,26 +410,48 @@ Responde SOLO JSON:
         plantas = self.plantas.obtener_todas()
         remedios = self.remedios.obtener_todos()
         
-        productos_str = self._formatear_productos_para_gpt(productos)
+        # ⭐ NUEVO: Formatear con composición
+        productos_str = self._formatear_productos_con_composicion(productos)
         plantas_str = self._formatear_plantas_para_gpt(plantas)
         remedios_str = self._formatear_remedios_para_gpt(remedios)
         
-        prompt = f"""DIAGNÓSTICO: {diagnostico}
+        prompt = f"""Eres médico naturista experto. Analiza CIENTÍFICAMENTE qué producto es más efectivo.
 
-PRODUCTOS DISPONIBLES (elige 1-2):
+DIAGNÓSTICO: {diagnostico}
+
+PRODUCTOS DISPONIBLES (con composición):
 {productos_str}
 
-PLANTAS DISPONIBLES (elige 1-2):
+PLANTAS DISPONIBLES:
 {plantas_str}
 
-REMEDIOS DISPONIBLES (elige 1):
+REMEDIOS CASEROS:
 {remedios_str}
+
+INSTRUCCIONES:
+1. SIEMPRE recomienda AL MENOS 1 producto
+2. Analiza la COMPOSICIÓN de cada producto
+3. Elige el que tenga ingredientes activos MÁS efectivos para este caso
+4. Explica POR QUÉ ese producto (basado en su composición)
+
+CRITERIOS DE SELECCIÓN:
+- Para INSOMNIO: busca triptófano, magnesio, valeriana, pasiflora
+- Para ESTRÉS: busca ashwagandha, magnesio, vitamina B
+- Para CANSANCIO: busca hierro, vitamina B12, ginseng, maca
+- Para DOLOR: busca omega-3, cúrcuma, jengibre, MSM
+
+REGLAS:
+- Casos SIMPLES: 1 producto + 1-2 plantas + 1 remedio
+- Casos COMPLEJOS: 1-2 productos + 1-2 plantas + 1 remedio
+- PRIORIZA productos con ingredientes activos específicos para el caso
+- Si ningún producto tiene ingredientes específicos, elige el más completo
 
 Responde SOLO JSON:
 {{
-  "productos": [1, 2],
+  "productos": [1],
   "plantas": [1, 2],
-  "remedios": [1]
+  "remedios": [1],
+  "razon_producto": "Este producto contiene X que ayuda con Y porque Z"
 }}"""
 
         try:
@@ -442,13 +464,13 @@ Responde SOLO JSON:
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': config['modelo'],  # ⭐ Lee desde BD
+                    'model': config['modelo'],
                     'messages': [
-                        {'role': 'system', 'content': self.identidad},
+                        {'role': 'system', 'content': 'Eres médico que analiza composición química de productos naturales.'},
                         {'role': 'user', 'content': prompt}
                     ],
-                    'temperature': 0.4,
-                    'max_tokens': 300
+                    'temperature': 0.3,
+                    'max_tokens': 400
                 },
                 timeout=25
             )
@@ -462,6 +484,9 @@ Responde SOLO JSON:
                 
                 self.ia_config.incrementar_consulta(0.02)
                 
+                # ⭐ Agregar explicación de por qué ese producto
+                print(f"   ✅ Producto recomendado: {receta.get('razon_producto', 'N/A')}")
+                
                 return receta
         
         except Exception as e:
@@ -469,8 +494,29 @@ Responde SOLO JSON:
         
         return None
     
-    # Las demás funciones (investigar_plantas, investigar_remedios, etc.) permanecen igual
-    # Solo cambian para usar config['modelo'] desde BD
+    def _formatear_productos_con_composicion(self, productos: List[Dict]) -> str:
+        """Formatear productos CON análisis de composición"""
+        lineas = []
+        for p in productos[:10]:
+            precio = float(p.get('precio', 0))
+            
+            lineas.append(f"ID {p['id']}: {p['nombre']} (S/.{precio:.0f})")
+            lineas.append(f"   Para qué: {p.get('para_que_sirve', 'N/A')[:100]}")
+            
+            # ⭐ COMPOSICIÓN
+            if p.get('composicion_activos'):
+                lineas.append(f"   Composición: {p['composicion_activos'][:150]}")
+            
+            if p.get('mecanismo_accion'):
+                lineas.append(f"   Cómo funciona: {p['mecanismo_accion'][:150]}")
+            
+            if p.get('efectividad_estimada'):
+                efectividad_pct = float(p['efectividad_estimada']) * 100
+                lineas.append(f"   Efectividad: {efectividad_pct:.0f}%")
+            
+            lineas.append("")
+        
+        return '\n'.join(lineas)
     
     def investigar_plantas_para_diagnostico(self, diagnostico: str) -> List[Dict]:
         """Investigar plantas con WEB SEARCH REAL"""
@@ -723,5 +769,5 @@ Máximo 3-4 líneas."""
         lineas = []
         for r in remedios[:10]:
             desc = r.get('descripcion', '')
-            lineas.append(f"ID {r['id]}: {r['nombre']} - {desc[:80]}")
+            lineas.append(f"ID {r['id']}: {r['nombre']} - {desc[:80]}")
         return '\n'.join(lineas)
